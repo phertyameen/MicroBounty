@@ -1,34 +1,49 @@
 import Link from 'next/link'
-import { Bounty } from '@/lib/types'
+import { Bounty, BountyStatusIndex, CATEGORY_LABELS } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDistance } from 'date-fns'
-import { Clock, Users } from 'lucide-react'
+import { Clock, Coins } from 'lucide-react'
+import { STATUS_COLORS } from '@/lib/constants'
 
 interface BountyCardProps {
   bounty: Bounty
 }
 
+// Format a raw uint256 reward into a human-readable string
+function formatReward(reward: string, decimals: number): string {
+  const divisor = BigInt(10 ** decimals)
+  const whole = BigInt(reward) / divisor
+  const remainder = BigInt(reward) % divisor
+  if (remainder === BigInt(0)) return whole.toString()
+  const decimal = remainder.toString().padStart(decimals, '0').replace(/0+$/, '')
+  return `${whole}.${decimal}`
+}
+
+// Map BountyStatusIndex number → display string
+const STATUS_LABELS: Record<BountyStatusIndex, string> = {
+  [BountyStatusIndex.OPEN]: 'OPEN',
+  [BountyStatusIndex.IN_PROGRESS]: 'IN PROGRESS',
+  [BountyStatusIndex.COMPLETED]: 'COMPLETED',
+  [BountyStatusIndex.CANCELLED]: 'CANCELLED',
+}
+
+// Map BountyStatusIndex → STATUS_COLORS key
+const STATUS_COLOR_MAP: Record<BountyStatusIndex, keyof typeof STATUS_COLORS> = {
+  [BountyStatusIndex.OPEN]: 'OPEN',
+  [BountyStatusIndex.IN_PROGRESS]: 'IN_PROGRESS',
+  [BountyStatusIndex.COMPLETED]: 'COMPLETED',
+  [BountyStatusIndex.CANCELLED]: 'CANCELLED',
+}
+
 export function BountyCard({ bounty }: BountyCardProps) {
-  const formatBudget = (budget: string, decimals: number) => {
-    const value = BigInt(budget) / BigInt(10 ** decimals)
-    return value.toString()
-  }
-
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      OPEN: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
-      IN_PROGRESS: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
-      UNDER_REVIEW: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
-      COMPLETED: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
-      CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
-    }
-    return colors[status] || colors.OPEN
-  }
-
-  const timeUntilDeadline = formatDistance(new Date(bounty.deadline), new Date(), {
+  const createdAgo = formatDistance(new Date(bounty.createdAt * 1000), new Date(), {
     addSuffix: true,
   })
+
+  const statusLabel = STATUS_LABELS[bounty.status as BountyStatusIndex] ?? 'OPEN'
+  const statusColorKey = STATUS_COLOR_MAP[bounty.status as BountyStatusIndex] ?? 'OPEN'
+  const categoryLabel = CATEGORY_LABELS[bounty.category] ?? 'Other'
 
   return (
     <Link href={`/bounty/${bounty.id}`}>
@@ -39,8 +54,8 @@ export function BountyCard({ bounty }: BountyCardProps) {
             <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 flex-1">
               {bounty.title}
             </h3>
-            <Badge className={`whitespace-nowrap flex-shrink-0 ${getStatusColor(bounty.status)}`}>
-              {bounty.status}
+            <Badge className={`whitespace-nowrap flex-shrink-0 ${STATUS_COLORS[statusColorKey]}`}>
+              {statusLabel}
             </Badge>
           </div>
 
@@ -49,45 +64,40 @@ export function BountyCard({ bounty }: BountyCardProps) {
             {bounty.description}
           </p>
 
-          {/* Skills */}
-          <div className="flex flex-wrap gap-1 mb-4">
-            {bounty.skills.slice(0, 2).map((skill) => (
-              <Badge key={skill} variant="secondary" className="text-xs">
-                {skill}
-              </Badge>
-            ))}
-            {bounty.skills.length > 2 && (
-              <Badge variant="secondary" className="text-xs">
-                +{bounty.skills.length - 2}
-              </Badge>
-            )}
+          {/* Category badge */}
+          <div className="mb-4">
+            <Badge variant="secondary" className="text-xs">
+              {categoryLabel}
+            </Badge>
           </div>
 
           {/* Footer */}
           <div className="border-t border-border pt-4 space-y-3">
-            {/* Budget */}
+            {/* Reward */}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Budget</span>
-              <span className="font-semibold text-primary">
-                {formatBudget(bounty.budget, bounty.token.decimals)} {bounty.token.symbol}
+              <span className="text-sm text-muted-foreground">Reward</span>
+              <span className="font-semibold text-primary flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5" />
+                {formatReward(bounty.reward, bounty.token.decimals)} {bounty.token.symbol}
               </span>
             </div>
 
-            {/* Deadline & Submissions */}
+            {/* Created & hunter */}
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{timeUntilDeadline}</span>
+                <Clock className="w-3.5 h-3.5" />
+                <span>{createdAgo}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{bounty.submissionCount} submissions</span>
-              </div>
+              {bounty.hunter !== '0x0000000000000000000000000000000000000000' && (
+                <span className="truncate">
+                  Hunter: {bounty.hunter.slice(0, 6)}…{bounty.hunter.slice(-4)}
+                </span>
+              )}
             </div>
 
             {/* Creator */}
             <div className="text-xs text-muted-foreground truncate">
-              by {bounty.creatorName || bounty.creatorAddress.slice(0, 10)}...
+              by {bounty.creatorName ?? `${bounty.creator.slice(0, 6)}…${bounty.creator.slice(-4)}`}
             </div>
           </div>
         </div>

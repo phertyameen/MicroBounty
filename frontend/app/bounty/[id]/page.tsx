@@ -4,32 +4,73 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
-import { useBounty } from '@/context/BountyContext'
+import { useBounty, DOT_ADDRESS, CATEGORY_LABELS } from '@/context/BountyContext'
 import { useWallet } from '@/context/WalletContext'
+import { BountyStatusIndex } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatDistance, format } from 'date-fns'
-import { Clock, Users, DollarSign, CheckCircle, AlertCircle } from 'lucide-react'
+import { Clock, DollarSign, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { ethers } from 'ethers'
 import { SubmitWorkModal } from '@/components/features/SubmitWorkModal'
 import { ApproveBountyReview } from '@/components/features/ApproveBountyReview'
 import { CancelBountyModal } from '@/components/features/CancelBountyModal'
 
+// Maps BountyStatusIndex → display string + colour
+const STATUS_META: Record<number, { label: string; className: string }> = {
+  [BountyStatusIndex.OPEN]: {
+    label: 'Open',
+    className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+  },
+  [BountyStatusIndex.IN_PROGRESS]: {
+    label: 'In Progress',
+    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+  },
+  [BountyStatusIndex.COMPLETED]: {
+    label: 'Completed',
+    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
+  },
+  [BountyStatusIndex.CANCELLED]: {
+    label: 'Cancelled',
+    className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
+  },
+}
+
+/** Format a raw reward bigint string using the token's decimals */
+function formatReward(raw: string, decimals: number): string {
+  try {
+    return parseFloat(ethers.formatUnits(raw, decimals)).toLocaleString(undefined, {
+      maximumFractionDigits: 4,
+    })
+  } catch {
+    return raw
+  }
+}
+
+/** Shorten an address for display */
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+}
+
 export default function BountyDetail() {
   const params = useParams()
   const bountyId = params.id as string
-  const { selectedBounty, fetchBountyById, isLoading } = useBounty()
+
+  const { selectedBounty, fetchBountyById, isLoading, error, submitWork, approveBounty, cancelBounty } = useBounty()
   const { connected, address } = useWallet()
+
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showApproveModal, setShowApproveModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
 
   useEffect(() => {
-    fetchBountyById(bountyId)
+    if (bountyId) fetchBountyById(bountyId)
   }, [bountyId, fetchBountyById])
 
+  // ── Loading ────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -45,7 +86,8 @@ export default function BountyDetail() {
     )
   }
 
-  if (!selectedBounty) {
+  // ── Error / not found ──────────────────────────────────────
+  if (error || !selectedBounty) {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
@@ -53,7 +95,9 @@ export default function BountyDetail() {
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
             <h1 className="text-2xl font-bold mb-2">Bounty Not Found</h1>
-            <p className="text-muted-foreground mb-6">This bounty doesn't exist or has been removed.</p>
+            <p className="text-muted-foreground mb-6">
+              {error ?? "This bounty doesn't exist or has been removed."}
+            </p>
             <Link href="/">
               <Button>Back to Browse</Button>
             </Link>
@@ -64,26 +108,29 @@ export default function BountyDetail() {
     )
   }
 
-  const isCreator = address?.toLowerCase() === selectedBounty.creatorAddress.toLowerCase()
-  const canSubmit = connected && !isCreator && selectedBounty.status === 'OPEN'
-  const canApprove = isCreator && selectedBounty.status === 'UNDER_REVIEW'
-  const canCancel = isCreator && (selectedBounty.status === 'OPEN' || selectedBounty.status === 'IN_PROGRESS')
+  // ── Derived state ──────────────────────────────────────────
+  const bounty = selectedBounty
+  const statusMeta = STATUS_META[bounty.status] ?? STATUS_META[BountyStatusIndex.OPEN]
+  const isNative = bounty.paymentToken === DOT_ADDRESS
 
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      OPEN: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
-      IN_PROGRESS: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
-      UNDER_REVIEW: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
-      COMPLETED: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
-      CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
-    }
-    return colors[status] || colors.OPEN
-  }
+  const isCreator = address?.toLowerCase() === bounty.creator.toLowerCase()
+  const isHunter  = address?.toLowerCase() === bounty.hunter.toLowerCase()
 
-  const formatBudget = (budget: string, decimals: number) => {
-    const value = BigInt(budget) / BigInt(10 ** decimals)
-    return value.toString()
-  }
+  // Match contract logic exactly:
+  // submitWork: status === OPEN and not creator
+  const canSubmit  = connected && !isCreator && bounty.status === BountyStatusIndex.OPEN
+  // approveBounty: creator + IN_PROGRESS
+  const canApprove = connected && isCreator && bounty.status === BountyStatusIndex.IN_PROGRESS
+  // cancelBounty: creator + OPEN only (contract reverts on anything else)
+  const canCancel  = connected && isCreator && bounty.status === BountyStatusIndex.OPEN
+
+  const createdDate   = new Date(bounty.createdAt * 1000)   // contract stores unix seconds
+  const submittedDate = bounty.submittedAt ? new Date(bounty.submittedAt * 1000) : null
+  const completedDate = bounty.completedAt ? new Date(bounty.completedAt * 1000) : null
+
+  const categoryLabel = CATEGORY_LABELS[bounty.category] ?? 'Other'
+  const formattedReward = formatReward(bounty.reward, bounty.token.decimals)
+  const explorerBase = 'https://blockscout-testnet.polkadot.io'
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -95,141 +142,208 @@ export default function BountyDetail() {
           <nav className="flex items-center gap-2 text-sm">
             <Link href="/" className="text-primary hover:underline">Browse</Link>
             <span className="text-muted-foreground">/</span>
-            <span className="text-muted-foreground truncate">{selectedBounty.title}</span>
+            <span className="text-muted-foreground truncate">{bounty.title}</span>
           </nav>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Content */}
+
+          {/* ── Left column ─────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-6">
+
             {/* Header */}
             <div>
               <div className="flex items-start justify-between gap-4 mb-3">
-                <h1 className="text-3xl font-bold">{selectedBounty.title}</h1>
-                <Badge className={getStatusColor(selectedBounty.status)}>
-                  {selectedBounty.status}
-                </Badge>
+                <h1 className="text-3xl font-bold">{bounty.title}</h1>
+                <Badge className={statusMeta.className}>{statusMeta.label}</Badge>
               </div>
-              <p className="text-muted-foreground">
-                Created by {selectedBounty.creatorName || selectedBounty.creatorAddress.slice(0, 10)}...
+              <p className="text-muted-foreground text-sm">
+                Created by{' '}
+                <a
+                  href={`${explorerBase}/address/${bounty.creator}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {shortAddr(bounty.creator)}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                {' · '}
+                <span title={format(createdDate, 'PPpp')}>
+                  {formatDistance(createdDate, new Date(), { addSuffix: true })}
+                </span>
               </p>
             </div>
 
             {/* Description */}
             <Card className="p-6">
               <h2 className="font-semibold mb-3">About this bounty</h2>
-              <p className="text-muted-foreground whitespace-pre-wrap">{selectedBounty.description}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">{bounty.description}</p>
             </Card>
 
-            {/* Requirements */}
-            <Card className="p-6">
-              <h2 className="font-semibold mb-4">Requirements</h2>
-              <div className="space-y-3">
-                <div>
-                  <h3 className="font-medium text-sm mb-2">Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedBounty.skills.map((skill) => (
-                      <Badge key={skill} variant="secondary">{skill}</Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Submissions Tab */}
-            <Tabs defaultValue="submissions" className="space-y-4">
+            {/* Tabs */}
+            <Tabs defaultValue="submission" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="submissions">
-                  Submissions ({selectedBounty.submissionCount})
-                </TabsTrigger>
+                <TabsTrigger value="submission">Submission</TabsTrigger>
                 <TabsTrigger value="details">Details</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="submissions" className="space-y-4">
-                {selectedBounty.submissionCount > 0 ? (
-                  <div className="space-y-3">
-                    {[...Array(selectedBounty.submissionCount)].map((_, i) => (
-                      <Card key={i} className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="font-medium">Submission #{i + 1}</div>
-                            <p className="text-sm text-muted-foreground">Submitted 2 days ago</p>
-                          </div>
-                          <Badge variant="outline">Pending Review</Badge>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
+              {/* Submission tab */}
+              <TabsContent value="submission" className="space-y-4">
+                {bounty.status === BountyStatusIndex.OPEN && (
                   <div className="text-center py-8 bg-muted/50 rounded-lg">
-                    <p className="text-muted-foreground">No submissions yet</p>
+                    <p className="text-muted-foreground">No submissions yet — be the first!</p>
                   </div>
+                )}
+
+                {bounty.status !== BountyStatusIndex.OPEN && bounty.hunter !== ethers.ZeroAddress && (
+                  <Card className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          Hunter:{' '}
+                          <a
+                            href={`${explorerBase}/address/${bounty.hunter}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                          >
+                            {shortAddr(bounty.hunter)}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        {submittedDate && (
+                          <p className="text-sm text-muted-foreground">
+                            Submitted {formatDistance(submittedDate, new Date(), { addSuffix: true })}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline">{statusMeta.label}</Badge>
+                    </div>
+
+                    {bounty.proofUrl && (
+                      <div>
+                        <span className="text-sm font-medium">Proof: </span>
+                        <a
+                          href={bounty.proofUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          {bounty.proofUrl.length > 60
+                            ? bounty.proofUrl.slice(0, 60) + '…'
+                            : bounty.proofUrl}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+
+                    {bounty.submissionNotes && (
+                      <div>
+                        <span className="text-sm font-medium">Notes: </span>
+                        <span className="text-sm text-muted-foreground">{bounty.submissionNotes}</span>
+                      </div>
+                    )}
+                  </Card>
                 )}
               </TabsContent>
 
-              <TabsContent value="details" className="space-y-4">
-                <Card className="p-6 space-y-4">
+              {/* Details tab */}
+              <TabsContent value="details">
+                <Card className="p-6 space-y-4 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Created</span>
-                    <span>{format(new Date(selectedBounty.createdAt), 'MMM dd, yyyy')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Updated</span>
-                    <span>{formatDistance(new Date(selectedBounty.updatedAt), new Date(), { addSuffix: true })}</span>
+                    <span className="text-muted-foreground">Bounty ID</span>
+                    <span className="font-mono">#{bounty.id}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Category</span>
-                    <span>{selectedBounty.category || 'Uncategorized'}</span>
+                    <span>{categoryLabel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Created</span>
+                    <span>{format(createdDate, 'MMM dd, yyyy HH:mm')}</span>
+                  </div>
+                  {submittedDate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Submitted</span>
+                      <span>{format(submittedDate, 'MMM dd, yyyy HH:mm')}</span>
+                    </div>
+                  )}
+                  {completedDate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Completed</span>
+                      <span>{format(completedDate, 'MMM dd, yyyy HH:mm')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Payment token</span>
+                    {isNative ? (
+                      <span>Native PAS</span>
+                    ) : (
+                      <a
+                        href={`${explorerBase}/address/${bounty.paymentToken}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        {bounty.token.symbol} ({shortAddr(bounty.paymentToken)})
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
                 </Card>
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* Sidebar */}
+          {/* ── Sidebar ──────────────────────────────────────── */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-20 space-y-6">
-              {/* Budget */}
+
+              {/* Reward */}
               <div>
-                <div className="text-sm text-muted-foreground mb-1">Budget</div>
+                <div className="text-sm text-muted-foreground mb-1">Reward</div>
                 <div className="text-2xl font-bold text-primary flex items-center gap-2">
                   <DollarSign className="w-6 h-6" />
-                  {formatBudget(selectedBounty.budget, selectedBounty.token.decimals)}
+                  {formattedReward}
                 </div>
-                <div className="text-sm text-muted-foreground">{selectedBounty.token.symbol}</div>
+                <div className="text-sm text-muted-foreground">{bounty.token.symbol}</div>
               </div>
 
-              {/* Deadline */}
+              {/* Timeline */}
               <div>
                 <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  Deadline
+                  Timeline
                 </div>
-                <div className="font-medium">
-                  {format(new Date(selectedBounty.deadline), 'MMM dd, yyyy')}
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Posted</span>
+                    <span>{formatDistance(createdDate, new Date(), { addSuffix: true })}</span>
+                  </div>
+                  {submittedDate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Submitted</span>
+                      <span>{formatDistance(submittedDate, new Date(), { addSuffix: true })}</span>
+                    </div>
+                  )}
+                  {completedDate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Completed</span>
+                      <span>{formatDistance(completedDate, new Date(), { addSuffix: true })}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {formatDistance(new Date(selectedBounty.deadline), new Date(), { addSuffix: true })}
-                </div>
-              </div>
-
-              {/* Submissions */}
-              <div>
-                <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Submissions
-                </div>
-                <div className="font-medium">{selectedBounty.submissionCount}</div>
               </div>
 
               {/* Actions */}
               <div className="space-y-2 pt-4 border-t border-border">
                 {!connected ? (
                   <div className="text-center py-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-3">Connect wallet to interact</p>
+                    <p className="text-sm text-muted-foreground">Connect wallet to interact</p>
                   </div>
                 ) : (
                   <>
@@ -239,19 +353,20 @@ export default function BountyDetail() {
                         Submit Work
                       </Button>
                     )}
-
                     {canApprove && (
-                      <Button onClick={() => setShowApproveModal(true)} variant="default" className="w-full">
-                        Review Submissions
+                      <Button onClick={() => setShowApproveModal(true)} className="w-full">
+                        Approve &amp; Pay Hunter
                       </Button>
                     )}
-
                     {canCancel && (
-                      <Button onClick={() => setShowCancelModal(true)} variant="destructive" className="w-full">
+                      <Button
+                        onClick={() => setShowCancelModal(true)}
+                        variant="destructive"
+                        className="w-full"
+                      >
                         Cancel Bounty
                       </Button>
                     )}
-
                     {!canSubmit && !canApprove && !canCancel && (
                       <div className="text-center py-4 bg-muted/50 rounded-lg">
                         <p className="text-sm text-muted-foreground">No actions available</p>
@@ -262,13 +377,30 @@ export default function BountyDetail() {
               </div>
             </Card>
           </div>
+
         </div>
       </main>
 
       {/* Modals */}
-      <SubmitWorkModal open={showSubmitModal} onOpenChange={setShowSubmitModal} bounty={selectedBounty} />
-      {isCreator && <ApproveBountyReview open={showApproveModal} onOpenChange={setShowApproveModal} bounty={selectedBounty} />}
-      {isCreator && <CancelBountyModal open={showCancelModal} onOpenChange={setShowCancelModal} bounty={selectedBounty} />}
+      <SubmitWorkModal
+        open={showSubmitModal}
+        onOpenChange={setShowSubmitModal}
+        bounty={bounty}
+      />
+      {isCreator && (
+        <ApproveBountyReview
+          open={showApproveModal}
+          onOpenChange={setShowApproveModal}
+          bounty={bounty}
+        />
+      )}
+      {isCreator && (
+        <CancelBountyModal
+          open={showCancelModal}
+          onOpenChange={setShowCancelModal}
+          bounty={bounty}
+        />
+      )}
 
       <Footer />
     </div>

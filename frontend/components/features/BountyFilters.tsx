@@ -1,8 +1,8 @@
 'use client'
 
 import { useBounty } from '@/context/BountyContext'
-import { BountyStatus } from '@/lib/types'
-import { AVAILABLE_SKILLS, TOKENS } from '@/lib/constants'
+import { BountyStatus, Category, CATEGORY_LABELS } from '@/lib/types'
+import { TOKENS } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -22,8 +22,10 @@ export function BountyFilters() {
   const { updateFilters, clearFilters } = useBounty()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<BountyStatus[]>([])
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<'recent' | 'budget-high' | 'budget-low' | 'deadline'>('recent')
+  const [selectedCategory, setSelectedCategory] = useState<Category | undefined>(undefined)
+  const [selectedToken, setSelectedToken] = useState<string | undefined>(undefined)
+  // sortBy values match BountyFilters type — no 'budget-high/low', no 'deadline'
+  const [sortBy, setSortBy] = useState<'recent' | 'reward-high' | 'reward-low' | 'oldest'>('recent')
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const handleStatusChange = (status: BountyStatus, checked: boolean) => {
@@ -34,33 +36,44 @@ export function BountyFilters() {
     updateFilters({ status: newStatuses })
   }
 
-  const handleSkillChange = (skill: string, checked: boolean) => {
-    const newSkills = checked
-      ? [...selectedSkills, skill]
-      : selectedSkills.filter((s) => s !== skill)
-    setSelectedSkills(newSkills)
-    updateFilters({ skills: newSkills })
-  }
-
   const handleSearch = (value: string) => {
     setSearchTerm(value)
     updateFilters({ search: value })
   }
 
   const handleSortChange = (value: string) => {
-    setSortBy(value as typeof sortBy)
-    updateFilters({ sortBy: value as typeof sortBy })
+    const v = value as typeof sortBy
+    setSortBy(v)
+    updateFilters({ sortBy: v })
+  }
+
+  const handleCategoryChange = (value: string) => {
+    const cat = value === 'all' ? undefined : Number(value) as Category
+    setSelectedCategory(cat)
+    updateFilters({ category: cat })
+  }
+
+  const handleTokenChange = (value: string) => {
+    const token = value === 'all' ? undefined : value
+    setSelectedToken(token)
+    updateFilters({ paymentToken: token })
   }
 
   const handleClear = () => {
     setSearchTerm('')
     setSelectedStatuses([])
-    setSelectedSkills([])
+    setSelectedCategory(undefined)
+    setSelectedToken(undefined)
     setSortBy('recent')
     clearFilters()
   }
 
-  const hasActiveFilters = searchTerm || selectedStatuses.length > 0 || selectedSkills.length > 0 || sortBy !== 'recent'
+  const hasActiveFilters =
+    searchTerm ||
+    selectedStatuses.length > 0 ||
+    selectedCategory !== undefined ||
+    selectedToken !== undefined ||
+    sortBy !== 'recent'
 
   return (
     <div className="space-y-6">
@@ -84,7 +97,7 @@ export function BountyFilters() {
         )}
       </div>
 
-      {/* Sort & Display Controls */}
+      {/* Sort */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={sortBy} onValueChange={handleSortChange}>
           <SelectTrigger className="w-full sm:w-48">
@@ -92,9 +105,9 @@ export function BountyFilters() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="recent">Most Recent</SelectItem>
-            <SelectItem value="budget-high">Budget: High to Low</SelectItem>
-            <SelectItem value="budget-low">Budget: Low to High</SelectItem>
-            <SelectItem value="deadline">Deadline Soon</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="reward-high">Reward: High to Low</SelectItem>
+            <SelectItem value="reward-low">Reward: Low to High</SelectItem>
           </SelectContent>
         </Select>
 
@@ -110,7 +123,7 @@ export function BountyFilters() {
       {/* Advanced Filters */}
       {showAdvanced && (
         <Card className="p-6 space-y-6">
-          {/* Status Filter */}
+          {/* Status */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Status</Label>
             <div className="space-y-2">
@@ -124,32 +137,53 @@ export function BountyFilters() {
                     }
                   />
                   <Label htmlFor={`status-${status}`} className="font-normal cursor-pointer">
-                    {status}
+                    {status.replace('_', ' ')}
                   </Label>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Skills Filter */}
+          {/* Category — maps to contract uint8 enum */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Skills</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {AVAILABLE_SKILLS.map((skill) => (
-                <div key={skill} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`skill-${skill}`}
-                    checked={selectedSkills.includes(skill)}
-                    onCheckedChange={(checked) =>
-                      handleSkillChange(skill, checked as boolean)
-                    }
-                  />
-                  <Label htmlFor={`skill-${skill}`} className="font-normal cursor-pointer text-sm">
-                    {skill}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            <Label className="text-base font-semibold">Category</Label>
+            <Select
+              value={selectedCategory !== undefined ? String(selectedCategory) : 'all'}
+              onValueChange={handleCategoryChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {Object.entries(CATEGORY_LABELS).map(([index, label]) => (
+                  <SelectItem key={index} value={index}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payment Token */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Payment Token</Label>
+            <Select
+              value={selectedToken ?? 'all'}
+              onValueChange={handleTokenChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All tokens" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All tokens</SelectItem>
+                {Object.values(TOKENS).map((token) => (
+                  <SelectItem key={token.address} value={token.address}>
+                    {token.symbol}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </Card>
       )}
