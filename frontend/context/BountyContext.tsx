@@ -566,17 +566,12 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
 
   const createBounty = useCallback(
     async (args: CreateBountyArgs): Promise<string | null> => {
-      console.log("Contract address:", CONTRACT_ADDRESS);
-      console.log("Args:", args);
-
       setIsWritePending(true);
       setError(null);
-
       try {
         const contract = await getWriteContract();
         const isDOT = args.paymentToken === DOT_ADDRESS;
 
-        // 🔥 Single correct transaction call
         const tx: ContractTransactionResponse = await contract.createBounty(
           args.title,
           args.description,
@@ -587,11 +582,12 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         );
 
         const token = resolveToken(args.paymentToken, chainIdRef.current);
+
+        // Record with a placeholder bountyId — we'll patch it after receipt
         recordTx(tx, "CREATE_BOUNTY", undefined, args.reward, token);
 
         const receipt = await tx.wait();
 
-        // Extract bountyId from event
         const iface = new ethers.Interface(MicroBountyABI.abi);
         let newBountyId: string | null = null;
 
@@ -602,17 +598,24 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
               newBountyId = parsed.args.bountyId.toString();
               break;
             }
-          } catch {
-            // ignore non-matching logs
-          }
+          } catch {}
+        }
+
+        // ✅ Patch the bountyId into the transaction record once we have it
+        if (newBountyId) {
+          setTransactions((prev) =>
+            prev.map((t) =>
+              t.hash === tx.hash ? { ...t, bountyId: newBountyId! } : t,
+            ),
+          );
         }
 
         await fetchBounties();
         return newBountyId;
       } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : "Failed to create bounty";
-        setError(msg);
+        setError(
+          err instanceof Error ? err.message : "Failed to create bounty",
+        );
         return null;
       } finally {
         setIsWritePending(false);
