@@ -18,11 +18,11 @@ contract MicroBounty is ReentrancyGuard {
     //  Constants
     // =========================================================
 
-    /// @notice Minimum reward for native DOT bounties (0.01 DOT, 10 decimals)
-    uint256 public constant MIN_REWARD_DOT = 0.01 ether;
+    /// @notice Minimum reward for native DOT bounties (100 DOT, 10 decimals)
+    uint256 public constant MIN_REWARD_DOT = 100e10;
 
-    /// @notice Minimum reward for stablecoin bounties (1 USDC/USDT, 6 decimals)
-    uint256 public constant MIN_REWARD_STABLE = 1e6;
+    /// @notice Minimum reward for stablecoin bounties (100 USDC/USDT, 6 decimals)
+    uint256 public constant MIN_REWARD_STABLE = 100e6;
 
     /// @notice Maximum length for bounty title
     uint256 public constant MAX_TITLE_LENGTH = 100;

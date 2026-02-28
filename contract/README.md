@@ -14,14 +14,14 @@ You should see a responce of
 🚀 Deploying mock tokens with account: 0xd68413bCB4e5c3A4e80054063e7904a30aaAEc89
 
  Deploying mock USDC...
-✅ Mock USDC deployed to: 0x665C61f43Af24DaD6a87C594F8A4fc5aad365015
+✅ Mock USDC deployed to: 0x556Af02B5a54c52c5CD95D6dbAB9C93500d6ec1b
 
 📋 Deploying mock USDT...
-✅ Mock USDT deployed to: 0xE830Cf2330Ce771060455395D3A32a41EF806d60
+✅ Mock USDT deployed to: 0x5Cba67a3BBb4Aee3F7DdF9258c77150437fe6001
 
 📄 Copy these into your .env file:
-USDC_ADDRESS=0x665C61f43Af24DaD6a87C594F8A4fc5aad365015
-USDT_ADDRESS=0xE830Cf2330Ce771060455395D3A32a41EF806d60
+USDC_ADDRESS=0x556Af02B5a54c52c5CD95D6dbAB9C93500d6ec1b
+USDT_ADDRESS=0x5Cba67a3BBb4Aee3F7DdF9258c77150437fe6001
 
 📁 Token addresses saved to frontend/lib/abis/mock-token-addresses.json
 ```
@@ -35,12 +35,12 @@ and should receive a response of:
 
 ```bash
 🚀 Deploying with account: 0xd68413bCB4e5c3A4e80054063e7904a30aaAEc89
-💰 Account balance: 4998656690000000000000
+💰 Account balance: 3994704371948500000000
 
 📋 Deploying MicroBounty...
    Supported tokens: [
-  '0x665C61f43Af24DaD6a87C594F8A4fc5aad365015',
-  '0xE830Cf2330Ce771060455395D3A32a41EF806d60'
+  '0x556Af02B5a54c52c5CD95D6dbAB9C93500d6ec1b',
+  '0x5Cba67a3BBb4Aee3F7DdF9258c77150437fe6001'
 ]
 ✅ MicroBounty deployed to: 0x026e4CE2F16E5d63613df64DEB08F55cf5d0ccEA
 
@@ -50,12 +50,12 @@ and should receive a response of:
 
 🎉 MicroBounty deployed and saved successfully!
 
-📄 Deployment Summary:
+ Deployment Summary:
    Contract : MicroBounty
-   Address  : 0x026e4CE2F16E5d63613df64DEB08F55cf5d0ccEA
+   Address  : 0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5
    Network  : polkadotTestnet
    Deployer : 0xd68413bCB4e5c3A4e80054063e7904a30aaAEc89
-   Tokens   : 0x665C61f43Af24DaD6a87C594F8A4fc5aad365015, 0xE830Cf2330Ce771060455395D3A32a41EF806d60
+   Tokens   : 0x556Af02B5a54c52c5CD95D6dbAB9C93500d6ec1b, 0x5Cba67a3BBb4Aee3F7DdF9258c77150437fe6001
 ```
 
 ## Other helpful commands 

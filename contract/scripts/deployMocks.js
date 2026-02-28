@@ -28,7 +28,7 @@ async function main() {
 
   // Save to frontend
   const addresses = { USDC: usdcAddress, USDT: usdtAddress };
-  const contractsDir = path.join(__dirname, "..", "..", "frontend", "lib", "abis");
+  const contractsDir = path.join(__dirname, "..", "..", "frontend", "lib", "abis", "mockToken");
 
   if (!fs.existsSync(contractsDir)) {
     fs.mkdirSync(contractsDir, { recursive: true });
@@ -51,7 +51,7 @@ async function main() {
     }
   }
 
-  console.log("\n📁 Token addresses saved to frontend/lib/abis/mock-token-addresses.json");
+  console.log("\n📁 Token addresses saved to frontend/lib/abis/mockToken/mock-token-addresses.json");
 }
 
 main().catch((error) => {
