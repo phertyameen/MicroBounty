@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
-import { BountyCard } from '@/components/features/BountyCard'
-import { BountyFilters } from '@/components/features/BountyFilters'
-import { useBounty } from '@/context/BountyContext'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { Plus } from 'lucide-react'
-import { ethers } from 'ethers'
+import { useEffect, useState } from "react";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { BountyCard } from "@/components/features/BountyCard";
+import { BountyFilters } from "@/components/features/BountyFilters";
+import { useBounty } from "@/context/BountyContext";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { ethers } from "ethers";
 
-const PAGE_SIZE = 6
+const PAGE_SIZE = 6;
 
 export default function Home() {
   const {
@@ -21,55 +21,74 @@ export default function Home() {
     fetchPlatformStats,
     filters,
     platformStats,
-  } = useBounty()
+  } = useBounty();
 
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(1);
 
   // Fetch bounties + platform stats on mount
   useEffect(() => {
-    fetchBounties({ status: [], sortBy: 'recent' })
-    fetchPlatformStats()
-  }, [fetchBounties, fetchPlatformStats])
+    fetchBounties({ status: [], sortBy: "recent" });
+    fetchPlatformStats();
+
+    const interval = setInterval(() => {
+      fetchPlatformStats();
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [fetchBounties, fetchPlatformStats]);
 
   // Reset to page 1 whenever the bounty list changes (filter applied)
   useEffect(() => {
-    setPage(1)
-  }, [bounties.length, filters])
+    setPage(1);
+  }, [bounties.length, filters]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(bounties.length / PAGE_SIZE))
-  const paginated = bounties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(bounties.length / PAGE_SIZE));
+  const paginated = bounties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Derive stats from platformStats (all values are raw bigint strings)
+  // Native tokens (10 decimal)
   const totalValueDOT = platformStats
-    ? parseFloat(ethers.formatUnits(platformStats.totalPaidOutDOT, 10)) +
-      parseFloat(ethers.formatUnits(platformStats.totalValueLockedDOT, 10))
-    : 0
+    ? parseFloat(ethers.formatUnits(platformStats.totalValueLockedDOT, 10))
+    : // +
+      // parseFloat(ethers.formatUnits(platformStats.totalPaidOutDOT, 10))
+      0;
+
+  // Stable Tokens (6 decimals)
+  const totalValueStable = platformStats
+    ? parseFloat(ethers.formatUnits(platformStats.totalValueLockedStable, 6))
+    : // +
+      // parseFloat(ethers.formatUnits(platformStats.totalPaidOutStable, 6))
+      0;
 
   const formatStatValue = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-    return n.toFixed(2)
-  }
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toFixed(2);
+  };
 
   const stats = [
     {
-      value: platformStats ? `${formatStatValue(totalValueDOT)} PAS` : '—',
-      label: 'Total Value',
+      value: platformStats ? `${formatStatValue(totalValueDOT)} PAS` : "—",
+      label: "Total Value (PAS)",
     },
     {
-      value: platformStats ? platformStats.activeBounties.toString() : '—',
-      label: 'Active Bounties',
+      value: platformStats ? `$${formatStatValue(totalValueStable)}` : "—",
+      label: "Total Value (Stable)",
     },
     {
-      value: platformStats ? platformStats.totalBounties.toString() : '—',
-      label: 'Total Bounties',
+      value: platformStats ? platformStats.activeBounties.toString() : "—",
+      label: "Active Bounties",
     },
     {
-      value: platformStats ? platformStats.completedBounties.toString() : '—',
-      label: 'Completed',
+      value: platformStats ? platformStats.totalBounties.toString() : "—",
+      label: "Total Bounties",
     },
-  ]
+    {
+      value: platformStats ? platformStats.completedBounties.toString() : "—",
+      label: "Completed",
+    },
+  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -81,11 +100,12 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div className="flex-1">
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-                Decentralized <span className="text-primary">Bounty Marketplace</span>
+                Decentralized{" "}
+                <span className="text-primary">Bounty Marketplace</span>
               </h1>
               <p className="text-lg text-muted-foreground mb-6 max-w-xl">
-                Create tasks, find talent, and complete bounties on the Polkadot Hub
-                with multi-currency support
+                Create tasks, find talent, and complete bounties on the Polkadot
+                Hub with multi-currency support
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link href="/create">
@@ -94,16 +114,23 @@ export default function Home() {
                     Create Bounty
                   </Button>
                 </Link>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
                   Learn More
                 </Button>
               </div>
             </div>
 
             {/* Live stats */}
-            <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
               {stats.map((s) => (
-                <div key={s.label} className="bg-card rounded-lg border border-border p-4">
+                <div
+                  key={s.label}
+                  className="bg-card rounded-lg border border-border p-4"
+                >
                   <div className="text-2xl font-bold text-primary">
                     {platformStats === null ? (
                       <span className="inline-block w-16 h-6 bg-muted animate-pulse rounded" />
@@ -122,7 +149,6 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-
           {/* Filters sidebar */}
           <div className="lg:col-span-1">
             <BountyFilters />
@@ -134,19 +160,26 @@ export default function Home() {
               <h2 className="text-2xl font-bold">
                 {filters.search
                   ? `Results for "${filters.search}"`
-                  : 'Available Bounties'}
+                  : filters.status.length > 0 ||
+                      filters.category !== undefined ||
+                      filters.paymentToken
+                    ? "Filtered Bounties"
+                    : "Available Bounties"}
               </h2>
               <p className="text-muted-foreground mt-1">
                 {isLoading
-                  ? 'Loading...'
-                  : `${bounties.length} ${bounties.length === 1 ? 'bounty' : 'bounties'} found`}
+                  ? "Loading..."
+                  : `${bounties.length} ${bounties.length === 1 ? "bounty" : "bounties"} found`}
               </p>
             </div>
 
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[...Array(PAGE_SIZE)].map((_, i) => (
-                  <div key={i} className="h-64 bg-muted rounded-lg animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-64 bg-muted rounded-lg animate-pulse"
+                  />
                 ))}
               </div>
             ) : paginated.length > 0 ? (
@@ -175,16 +208,18 @@ export default function Home() {
                   Previous
                 </Button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <Button
-                    key={p}
-                    variant={p === page ? 'default' : 'outline'}
-                    onClick={() => setPage(p)}
-                    className="w-9"
-                  >
-                    {p}
-                  </Button>
-                ))}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (p) => (
+                    <Button
+                      key={p}
+                      variant={p === page ? "default" : "outline"}
+                      onClick={() => setPage(p)}
+                      className="w-9"
+                    >
+                      {p}
+                    </Button>
+                  ),
+                )}
 
                 <Button
                   variant="outline"
@@ -201,5 +236,5 @@ export default function Home() {
 
       <Footer />
     </div>
-  )
+  );
 }

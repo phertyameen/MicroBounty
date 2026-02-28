@@ -39,6 +39,8 @@ const CONTRACT_ADDRESS = contractAddresses.MicroBounty;
 
 /** address(0) represents native DOT in the contract */
 const DOT_ADDRESS = "0x0000000000000000000000000000000000000000";
+const USDC_ADDRESS = contractAddresses.USDC_ADDRESS;
+const USDT_ADDRESS = contractAddresses.USDT_ADDRESS;
 
 /**
  * Known token metadata by address (lower-cased).
@@ -46,6 +48,18 @@ const DOT_ADDRESS = "0x0000000000000000000000000000000000000000";
  */
 const TOKEN_METADATA: Record<string, Omit<Token, "address">> = {
   [DOT_ADDRESS]: { id: "pas", symbol: "PAS", decimals: 10, chainId: 420420417 },
+  [USDT_ADDRESS.toLowerCase()]: {
+    id: "usdt",
+    symbol: "USDT",
+    decimals: 6,
+    chainId: 420420417,
+  },
+  [USDC_ADDRESS.toLowerCase()]: {
+    id: "usdc",
+    symbol: "USDC",
+    decimals: 6,
+    chainId: 420420417,
+  },
 };
 
 // -------------------------------------------------------------
@@ -117,6 +131,34 @@ function indexToStatus(index: BountyStatusIndex): BountyStatus {
   }[index];
 }
 
+//  Utility: wait for RPC state to propagate after a tx is mined
+//
+//  Polkadot Hub testnet (and many EVM-compatible nodes) have a
+//  small lag between a block being finalised and the node's view
+//  functions reflecting the new state.  Waiting one extra tick
+//  here prevents stale reads right after tx.wait() resolves.
+// -------------------------------------------------------------
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Refresh platform stats immediately, then again after a short
+ * delay to catch any RPC propagation lag.
+ *
+ * @param fetchFn   The fetchPlatformStats callback
+ * @param delayMs   How long to wait before the second fetch (default 3 s)
+ */
+async function refreshStatsWithRetry(
+  fetchFn: () => Promise<PlatformStats>,
+  delayMs = 3_000,
+): Promise<void> {
+  // First pass — may still be stale on slow nodes
+  await fetchFn();
+  // Second pass after a short delay — catches propagation lag
+  await sleep(delayMs);
+  await fetchFn();
+}
+
 // -------------------------------------------------------------
 //  Context shape
 // -------------------------------------------------------------
@@ -168,6 +210,9 @@ interface BountyContextType {
 const defaultFilters: BountyFilters = {
   status: [],
   sortBy: "recent",
+  search: "",
+  category: undefined,
+  paymentToken: undefined,
 };
 
 const BountyContext = createContext<BountyContextType | undefined>(undefined);
@@ -611,6 +656,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         }
 
         await fetchBounties();
+        await fetchPlatformStats();
         return newBountyId;
       } catch (err) {
         setError(
@@ -621,7 +667,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         setIsWritePending(false);
       }
     },
-    [getWriteContract, recordTx, fetchBounties],
+    [getWriteContract, recordTx, fetchBounties, fetchPlatformStats],
   );
 
   // -------------------------------------------------------
@@ -677,6 +723,10 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
           await fetchBountyById(bountyId);
         }
         await fetchBounties();
+        
+        // any RPC propagation lag (totalValueLocked decrement).
+        await refreshStatsWithRetry(fetchPlatformStats);
+        
         return true;
       } catch (err) {
         setError(
@@ -693,6 +743,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
       selectedBounty,
       fetchBountyById,
       fetchBounties,
+      fetchPlatformStats,
     ],
   );
 
@@ -709,12 +760,18 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         const tx: ContractTransactionResponse =
           await contract.cancelBounty(bountyId);
         recordTx(tx, "CANCEL_BOUNTY", bountyId);
+
         await tx.wait();
 
         if (selectedBounty?.id === bountyId) {
           await fetchBountyById(bountyId);
         }
+
         await fetchBounties();
+
+        // any RPC propagation lag (totalValueLocked decrement).
+        await refreshStatsWithRetry(fetchPlatformStats);
+
         return true;
       } catch (err) {
         setError(
@@ -731,6 +788,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
       selectedBounty,
       fetchBountyById,
       fetchBounties,
+      fetchPlatformStats,
     ],
   );
 
@@ -753,6 +811,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
 
   const clearFilters = useCallback(() => {
     setFilters(defaultFilters);
+    filtersRef.current = defaultFilters;
   }, []);
 
   const clearError = useCallback(() => {
@@ -820,5 +879,12 @@ export function useBounty(): BountyContextType {
 //  Convenience re-exports so consumers don't need extra imports
 // -------------------------------------------------------------
 
-export { BountyStatus, Category, CATEGORY_LABELS, DOT_ADDRESS };
+export {
+  BountyStatus,
+  Category,
+  CATEGORY_LABELS,
+  DOT_ADDRESS,
+  USDT_ADDRESS,
+  USDC_ADDRESS,
+};
 export type { CreateBountyArgs, SubmitWorkArgs };

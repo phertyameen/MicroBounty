@@ -326,13 +326,13 @@ export default function BountyDetail() {
                   </div>
                   {submittedDate && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Submitted</span>
+                      <span className="text-muted-foreground pr-1">Submitted</span>
                       <span>{formatDistance(submittedDate, new Date(), { addSuffix: true })}</span>
                     </div>
                   )}
                   {completedDate && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Completed</span>
+                      <span className="text-muted-foreground mr-1">Completed</span>
                       <span>{formatDistance(completedDate, new Date(), { addSuffix: true })}</span>
                     </div>
                   )}

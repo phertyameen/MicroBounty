@@ -5,19 +5,10 @@ import { Badge } from '@/components/ui/badge'
 import { formatDistance } from 'date-fns'
 import { Clock, Coins } from 'lucide-react'
 import { STATUS_COLORS } from '@/lib/constants'
+import { ethers } from 'ethers'
 
 interface BountyCardProps {
   bounty: Bounty
-}
-
-// Format a raw uint256 reward into a human-readable string
-function formatReward(reward: string, decimals: number): string {
-  const divisor = BigInt(10 ** decimals)
-  const whole = BigInt(reward) / divisor
-  const remainder = BigInt(reward) % divisor
-  if (remainder === BigInt(0)) return whole.toString()
-  const decimal = remainder.toString().padStart(decimals, '0').replace(/0+$/, '')
-  return `${whole}.${decimal}`
 }
 
 // Map BountyStatusIndex number → display string
@@ -41,8 +32,8 @@ export function BountyCard({ bounty }: BountyCardProps) {
     addSuffix: true,
   })
 
-  const statusLabel = STATUS_LABELS[bounty.status as BountyStatusIndex] ?? 'OPEN'
-  const statusColorKey = STATUS_COLOR_MAP[bounty.status as BountyStatusIndex] ?? 'OPEN'
+  const statusLabel = STATUS_LABELS[bounty.status] ?? 'OPEN'
+  const statusColorKey = STATUS_COLOR_MAP[bounty.status] ?? 'OPEN'
   const categoryLabel = CATEGORY_LABELS[bounty.category] ?? 'Other'
 
   return (
@@ -78,7 +69,7 @@ export function BountyCard({ bounty }: BountyCardProps) {
               <span className="text-sm text-muted-foreground">Reward</span>
               <span className="font-semibold text-primary flex items-center gap-1">
                 <Coins className="w-3.5 h-3.5" />
-                {formatReward(bounty.reward, bounty.token.decimals)} {bounty.token.symbol}
+                {ethers.formatUnits(bounty.reward, bounty.token.decimals)} {bounty.token.symbol}
               </span>
             </div>
 

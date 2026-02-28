@@ -1,79 +1,91 @@
-'use client'
+"use client";
 
-import { useBounty } from '@/context/BountyContext'
-import { BountyStatus, Category, CATEGORY_LABELS } from '@/lib/types'
-import { TOKENS } from '@/lib/constants'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
+import { useBounty } from "@/context/BountyContext";
+import { BountyStatus, Category, CATEGORY_LABELS } from "@/lib/types";
+import { TOKENS } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Card } from '@/components/ui/card'
-import { X } from 'lucide-react'
-import { useState } from 'react'
+} from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
+import { X } from "lucide-react";
+import { useState } from "react";
 
 export function BountyFilters() {
-  const { updateFilters, clearFilters } = useBounty()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedStatuses, setSelectedStatuses] = useState<BountyStatus[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<Category | undefined>(undefined)
-  const [selectedToken, setSelectedToken] = useState<string | undefined>(undefined)
-  // sortBy values match BountyFilters type — no 'budget-high/low', no 'deadline'
-  const [sortBy, setSortBy] = useState<'recent' | 'reward-high' | 'reward-low' | 'oldest'>('recent')
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const { updateFilters, clearFilters, fetchBounties, filters } = useBounty();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<BountyStatus[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<
+    Category | undefined
+  >(undefined);
+  const [selectedToken, setSelectedToken] = useState<string | undefined>(
+    undefined,
+  );
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handleStatusChange = (status: BountyStatus, checked: boolean) => {
     const newStatuses = checked
       ? [...selectedStatuses, status]
-      : selectedStatuses.filter((s) => s !== status)
-    setSelectedStatuses(newStatuses)
-    updateFilters({ status: newStatuses })
-  }
+      : selectedStatuses.filter((s) => s !== status);
+    setSelectedStatuses(newStatuses);
+    const newFilters = { ...filters, status: newStatuses };
+    updateFilters(newFilters);
+    fetchBounties(newFilters);
+  };
 
   const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    updateFilters({ search: value })
-  }
+    setSearchTerm(value);
+    const newFilters = { ...filters, search: value };
+    updateFilters(newFilters);
+    fetchBounties(newFilters);
+  };
 
   const handleSortChange = (value: string) => {
-    const v = value as typeof sortBy
-    setSortBy(v)
-    updateFilters({ sortBy: v })
-  }
+    const v = value as typeof filters.sortBy;
+    const newFilters = { ...filters, sortBy: v };
+    updateFilters(newFilters);
+    fetchBounties(newFilters);
+  };
 
   const handleCategoryChange = (value: string) => {
-    const cat = value === 'all' ? undefined : Number(value) as Category
-    setSelectedCategory(cat)
-    updateFilters({ category: cat })
-  }
+    const cat = value === "all" ? undefined : (Number(value) as Category);
+    setSelectedCategory(cat);
+    const newFilters = { ...filters, category: cat };
+    updateFilters(newFilters);
+    fetchBounties(newFilters);
+  };
 
   const handleTokenChange = (value: string) => {
-    const token = value === 'all' ? undefined : value
-    setSelectedToken(token)
-    updateFilters({ paymentToken: token })
-  }
+    const token = value === "all" ? undefined : value;
+    setSelectedToken(token);
+    const newFilters = { ...filters, paymentToken: token };
+    updateFilters(newFilters);
+    fetchBounties(newFilters);
+  };
 
   const handleClear = () => {
-    setSearchTerm('')
-    setSelectedStatuses([])
-    setSelectedCategory(undefined)
-    setSelectedToken(undefined)
-    setSortBy('recent')
-    clearFilters()
-  }
+    setSearchTerm("");
+    setSelectedStatuses([]);
+    setSelectedCategory(undefined);
+    setSelectedToken(undefined);
+    clearFilters();
+    fetchBounties({ status: [], sortBy: "recent" });
+  };
 
   const hasActiveFilters =
     searchTerm ||
     selectedStatuses.length > 0 ||
     selectedCategory !== undefined ||
     selectedToken !== undefined ||
-    sortBy !== 'recent'
+    filters.sortBy !== "recent";
 
   return (
     <div className="space-y-6">
@@ -99,7 +111,7 @@ export function BountyFilters() {
 
       {/* Sort */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <Select value={sortBy} onValueChange={handleSortChange}>
+        <Select value={filters.sortBy} onValueChange={handleSortChange}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -116,7 +128,7 @@ export function BountyFilters() {
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="w-full sm:w-auto"
         >
-          {showAdvanced ? 'Hide' : 'Show'} Filters
+          {showAdvanced ? "Hide" : "Show"} Filters
         </Button>
       </div>
 
@@ -136,8 +148,11 @@ export function BountyFilters() {
                       handleStatusChange(status, checked as boolean)
                     }
                   />
-                  <Label htmlFor={`status-${status}`} className="font-normal cursor-pointer">
-                    {status.replace('_', ' ')}
+                  <Label
+                    htmlFor={`status-${status}`}
+                    className="font-normal cursor-pointer"
+                  >
+                    {status.replace("_", " ")}
                   </Label>
                 </div>
               ))}
@@ -148,7 +163,11 @@ export function BountyFilters() {
           <div className="space-y-3">
             <Label className="text-base font-semibold">Category</Label>
             <Select
-              value={selectedCategory !== undefined ? String(selectedCategory) : 'all'}
+              value={
+                selectedCategory !== undefined
+                  ? String(selectedCategory)
+                  : "all"
+              }
               onValueChange={handleCategoryChange}
             >
               <SelectTrigger>
@@ -169,7 +188,7 @@ export function BountyFilters() {
           <div className="space-y-3">
             <Label className="text-base font-semibold">Payment Token</Label>
             <Select
-              value={selectedToken ?? 'all'}
+              value={selectedToken ?? "all"}
               onValueChange={handleTokenChange}
             >
               <SelectTrigger>
@@ -188,5 +207,5 @@ export function BountyFilters() {
         </Card>
       )}
     </div>
-  )
+  );
 }

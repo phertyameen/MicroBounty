@@ -1,82 +1,88 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useBounty } from '@/context/BountyContext'
-import { useWallet } from '@/context/WalletContext'
-import { Category, CATEGORY_LABELS } from '@/lib/types'
-import { DOT_ADDRESS } from '@/context/BountyContext'
+import { useState } from "react";
+import { useBounty } from "@/context/BountyContext";
+import { useWallet } from "@/context/WalletContext";
+import { Category, CATEGORY_LABELS } from "@/lib/types";
+import { DOT_ADDRESS } from "@/context/BountyContext";
 import {
   TOKENS,
   BOUNTY_TITLE_MAX_LENGTH,
   BOUNTY_DESCRIPTION_MAX_LENGTH,
-} from '@/lib/constants'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Card } from '@/components/ui/card'
+} from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { toast } from 'sonner'
-import { AlertCircle, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react'
-import { ethers } from 'ethers'
-import contractAddresses from '@/lib/abis/contract-addresses.json'
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
+import { ethers } from "ethers";
+import contractAddresses from "@/lib/abis/contract-addresses.json";
 
 // Minimal ERC20 ABI — only the functions we need
 const ERC20_ABI = [
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint256)',
-]
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+];
 
 interface CreateBountyFormProps {
-  onSuccess?: (bountyId: string) => void
+  onSuccess?: (bountyId: string) => void;
 }
 
-type TxStep = 'idle' | 'approving' | 'creating' | 'done'
+type TxStep = "idle" | "approving" | "creating" | "done";
 
 export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
-  const { createBounty, isWritePending } = useBounty()
-  const { connected, connect, signer } = useWallet()
+  const { createBounty, isWritePending } = useBounty();
+  const { connected, connect, signer } = useWallet();
 
-  const [step, setStep] = useState(1)
-  const [txStep, setTxStep] = useState<TxStep>('idle')
+  const [step, setStep] = useState(1);
+  const [txStep, setTxStep] = useState<TxStep>("idle");
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     category: String(Category.DEVELOPMENT),
-    rewardHuman: '',
+    rewardHuman: "",
     tokenAddress: DOT_ADDRESS, // default to native PAS/DOT
-  })
+  });
 
   const selectedToken =
     Object.values(TOKENS).find((t) => t.address === formData.tokenAddress) ??
-    TOKENS.DOT
+    TOKENS.DOT;
 
-  const isERC20 = formData.tokenAddress !== DOT_ADDRESS
-  const isPending = txStep === 'approving' || txStep === 'creating'
+  const isERC20 = formData.tokenAddress !== DOT_ADDRESS;
+  const isPending = txStep === "approving" || txStep === "creating";
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   // Convert human-readable amount → raw uint256 string for the contract
   const toRawReward = (): string => {
     try {
       return ethers
-        .parseUnits(formData.rewardHuman || '0', selectedToken.decimals)
-        .toString()
+        .parseUnits(formData.rewardHuman || "0", selectedToken.decimals)
+        .toString();
     } catch {
-      return '0'
+      return "0";
     }
-  }
+  };
 
   /**
    * For ERC20 tokens, check the current allowance and send an approval tx
@@ -84,92 +90,94 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
    */
   const ensureERC20Approval = async (rawReward: string): Promise<boolean> => {
     if (!signer) {
-      toast.error('No signer available. Please reconnect your wallet.')
-      return false
+      toast.error("No signer available. Please reconnect your wallet.");
+      return false;
     }
 
     try {
       const tokenContract = new ethers.Contract(
         formData.tokenAddress,
         ERC20_ABI,
-        signer
-      )
+        signer,
+      );
 
-      const signerAddress = await signer.getAddress()
-      const spender = contractAddresses.MicroBounty
+      const signerAddress = await signer.getAddress();
+      const spender = contractAddresses.MicroBounty;
 
       const currentAllowance: bigint = await tokenContract.allowance(
         signerAddress,
-        spender
-      )
+        spender,
+      );
 
       if (currentAllowance >= BigInt(rawReward)) {
         // Already approved — no need to send a tx
-        return true
+        return true;
       }
 
-      setTxStep('approving')
-      toast.info(`Approving ${selectedToken.symbol} spend — confirm in your wallet…`)
+      setTxStep("approving");
+      toast.info(
+        `Approving ${selectedToken.symbol} spend — confirm in your wallet…`,
+      );
 
-      const approveTx = await tokenContract.approve(spender, rawReward)
-      await approveTx.wait()
+      const approveTx = await tokenContract.approve(spender, rawReward);
+      await approveTx.wait();
 
-      toast.success(`${selectedToken.symbol} approved ✓`)
-      return true
+      toast.success(`${selectedToken.symbol} approved ✓`);
+      return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Approval failed'
+      const msg = err instanceof Error ? err.message : "Approval failed";
       // User rejected the approval
-      if (msg.toLowerCase().includes('user rejected') || msg.includes('4001')) {
-        toast.error('Approval cancelled.')
+      if (msg.toLowerCase().includes("user rejected") || msg.includes("4001")) {
+        toast.error("Approval cancelled.");
       } else {
-        toast.error(`Approval failed: ${msg}`)
+        toast.error(`Approval failed: ${msg}`);
       }
-      return false
+      return false;
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!connected) {
-      toast.error('Please connect your wallet first')
-      await connect()
-      return
+      toast.error("Please connect your wallet first");
+      await connect();
+      return;
     }
 
     // --- Validation ---
     if (!formData.title.trim()) {
-      toast.error('Title is required')
-      return
+      toast.error("Title is required");
+      return;
     }
     if (!formData.description.trim()) {
-      toast.error('Description is required')
-      return
+      toast.error("Description is required");
+      return;
     }
     if (!formData.rewardHuman || parseFloat(formData.rewardHuman) <= 0) {
-      toast.error('Reward must be greater than 0')
-      return
+      toast.error("Reward must be greater than 0");
+      return;
     }
 
-    const rawReward = toRawReward()
-    if (rawReward === '0') {
-      toast.error('Invalid reward amount')
-      return
+    const rawReward = toRawReward();
+    if (rawReward === "0") {
+      toast.error("Invalid reward amount");
+      return;
     }
 
     try {
       // Step 1 (ERC20 only): approval
       if (isERC20) {
-        const approved = await ensureERC20Approval(rawReward)
+        const approved = await ensureERC20Approval(rawReward);
         if (!approved) {
-          setTxStep('idle')
-          return
+          setTxStep("idle");
+          return;
         }
       }
 
       // Step 2: create the bounty
-      setTxStep('creating')
-      toast.info('Creating bounty — confirm in your wallet…')
+      setTxStep("creating");
+      toast.info("Creating bounty — confirm in your wallet…");
 
       const bountyId = await createBounty({
         title: formData.title.trim(),
@@ -177,43 +185,45 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
         reward: rawReward,
         paymentToken: formData.tokenAddress,
         category: Number(formData.category) as Category,
-      })
+      });
 
       if (bountyId) {
-        setTxStep('done')
-        toast.success(`Bounty #${bountyId} created on-chain! 🎉`)
+        setTxStep("done");
+        toast.success(`Bounty #${bountyId} created on-chain! 🎉`);
         // Reset form
         setFormData({
-          title: '',
-          description: '',
+          title: "",
+          description: "",
           category: String(Category.DEVELOPMENT),
-          rewardHuman: '',
+          rewardHuman: "",
           tokenAddress: DOT_ADDRESS,
-        })
-        setStep(1)
-        onSuccess?.(bountyId)
+        });
+        setStep(1);
+        onSuccess?.(bountyId);
       } else {
-        toast.error('Failed to create bounty. Check your wallet and try again.')
+        toast.error(
+          "Failed to create bounty. Check your wallet and try again.",
+        );
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Transaction failed'
-      if (msg.toLowerCase().includes('user rejected') || msg.includes('4001')) {
-        toast.error('Transaction cancelled.')
+      const msg = err instanceof Error ? err.message : "Transaction failed";
+      if (msg.toLowerCase().includes("user rejected") || msg.includes("4001")) {
+        toast.error("Transaction cancelled.");
       } else {
-        toast.error(`Error: ${msg}`)
+        toast.error(`Error: ${msg}`);
       }
     } finally {
-      setTxStep('idle')
+      setTxStep("idle");
     }
-  }
+  };
 
   const canProceedStep1 =
     formData.title.trim() &&
     formData.description.trim() &&
-    formData.category !== ''
+    formData.category !== "";
 
   const canProceedStep2 =
-    formData.rewardHuman && parseFloat(formData.rewardHuman) > 0
+    formData.rewardHuman && parseFloat(formData.rewardHuman) > 0;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -223,7 +233,7 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
           <div
             key={n}
             className={`h-2 w-12 rounded-full transition-colors ${
-              step >= n ? 'bg-primary' : 'bg-muted'
+              step >= n ? "bg-primary" : "bg-muted"
             }`}
           />
         ))}
@@ -322,7 +332,7 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
                   name="rewardHuman"
                   type="number"
                   placeholder={
-                    selectedToken.symbol === 'PAS' ? '0.0001' : '1.00'
+                    selectedToken.symbol === "PAS" ? "0.0001" : "1.00"
                   }
                   value={formData.rewardHuman}
                   onChange={handleChange}
@@ -340,7 +350,7 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
                     setFormData((prev) => ({
                       ...prev,
                       tokenAddress: v,
-                      rewardHuman: '',
+                      rewardHuman: "",
                     }))
                   }
                 >
@@ -418,13 +428,15 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
               label="Payment"
               value={
                 !isERC20
-                  ? 'Native PAS'
+                  ? "Native PAS"
                   : `ERC20 (${selectedToken.symbol}) — requires approval`
               }
             />
             <div>
               <span className="text-sm text-muted-foreground">Description</span>
-              <p className="text-sm mt-1 line-clamp-4">{formData.description}</p>
+              <p className="text-sm mt-1 line-clamp-4">
+                {formData.description}
+              </p>
             </div>
           </Card>
 
@@ -434,33 +446,36 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
               <div className="flex items-center gap-3">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 <p className="text-sm font-medium">
-                  {txStep === 'approving'
+                  {txStep === "approving"
                     ? `Waiting for ${selectedToken.symbol} approval…`
-                    : 'Creating bounty on-chain…'}
+                    : "Creating bounty on-chain…"}
                 </p>
               </div>
               {isERC20 && (
                 <div className="mt-3 flex gap-4 text-xs text-muted-foreground pl-7">
                   <span
                     className={
-                      txStep === 'creating'
-                        ? 'text-primary font-medium'
-                        : txStep === 'approving'
-                          ? 'text-primary font-medium'
-                          : ''
+                      txStep === "creating"
+                        ? "text-primary font-medium"
+                        : txStep === "approving"
+                          ? "text-primary font-medium"
+                          : ""
                     }
                   >
-                    {txStep === 'creating' ? (
+                    {txStep === "creating" ? (
                       <span className="flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-green-500" /> 1. Approved
+                        <CheckCircle2 className="w-3 h-3 text-green-500" /> 1.
+                        Approved
                       </span>
                     ) : (
-                      '1. Approve'
+                      "1. Approve"
                     )}
                   </span>
                   <span>→</span>
                   <span
-                    className={txStep === 'creating' ? 'text-primary font-medium' : ''}
+                    className={
+                      txStep === "creating" ? "text-primary font-medium" : ""
+                    }
                   >
                     2. Create
                   </span>
@@ -475,8 +490,8 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
               <div className="flex gap-3">
                 <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  Your wallet is not connected. Click &quot;Create Bounty&quot; and you
-                  will be prompted to connect.
+                  Your wallet is not connected. Click &quot;Create Bounty&quot;
+                  and you will be prompted to connect.
                 </p>
               </div>
             </Card>
@@ -502,14 +517,14 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
             type="button"
             onClick={() => {
               if (step === 1 && !canProceedStep1) {
-                toast.error('Please fill in all required fields')
-                return
+                toast.error("Please fill in all required fields");
+                return;
               }
               if (step === 2 && !canProceedStep2) {
-                toast.error('Please enter a valid reward amount')
-                return
+                toast.error("Please enter a valid reward amount");
+                return;
               }
-              setStep((s) => s + 1)
+              setStep((s) => s + 1);
             }}
             className="gap-2"
           >
@@ -525,16 +540,16 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
             {isPending || isWritePending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {txStep === 'approving' ? 'Approving…' : 'Creating…'}
+                {txStep === "approving" ? "Approving…" : "Creating…"}
               </>
             ) : (
-              'Create Bounty'
+              "Create Bounty"
             )}
           </Button>
         )}
       </div>
     </form>
-  )
+  );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -543,5 +558,5 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground shrink-0">{label}</span>
       <span className="font-medium text-right">{value}</span>
     </div>
-  )
+  );
 }

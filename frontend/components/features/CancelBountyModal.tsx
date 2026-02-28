@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Bounty } from '@/lib/types'
-import { useBounty } from '@/context/BountyContext'
+import { useState } from "react";
+import { Bounty } from "@/lib/types";
+import { useBounty } from "@/context/BountyContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,28 +11,32 @@ import {
   AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { toast } from 'sonner'
-import { AlertTriangle } from 'lucide-react'
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 
 interface CancelBountyModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  bounty: Bounty
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  bounty: Bounty;
 }
 
-export function CancelBountyModal({ open, onOpenChange, bounty }: CancelBountyModalProps) {
-  const { cancelBounty, isWritePending } = useBounty()
+export function CancelBountyModal({
+  open,
+  onOpenChange,
+  bounty,
+}: CancelBountyModalProps) {
+  const { cancelBounty, isWritePending } = useBounty();
 
   const handleCancel = async () => {
-    const success = await cancelBounty(bounty.id)
+    const success = await cancelBounty(bounty.id);
     if (success) {
-      toast.success('Bounty cancelled. Funds refunded to your wallet.')
-      onOpenChange(false)
+      toast.success("Bounty cancelled. Funds refunded to your wallet.");
+      onOpenChange(false);
     } else {
-      toast.error('Failed to cancel bounty. Check your wallet and try again.')
+      toast.error("Failed to cancel bounty. Check your wallet and try again.");
     }
-  }
+  };
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -47,7 +51,10 @@ export function CancelBountyModal({ open, onOpenChange, bounty }: CancelBountyMo
                 <ul className="list-disc list-inside space-y-1 mt-2">
                   <li>Refund the full reward to your wallet on-chain</li>
                   <li>Permanently close the bounty to new submissions</li>
-                  <li>Only works while the bounty is still OPEN (no submission yet)</li>
+                  <li>
+                    Only works while the bounty is still OPEN (no submission
+                    yet)
+                  </li>
                 </ul>
               </AlertDialogDescription>
             </div>
@@ -56,7 +63,8 @@ export function CancelBountyModal({ open, onOpenChange, bounty }: CancelBountyMo
 
         <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 mt-4">
           <p className="text-sm font-medium text-destructive">
-            This action cannot be undone. Your wallet will prompt you to confirm.
+            This action cannot be undone. Your wallet will prompt you to
+            confirm.
           </p>
         </div>
 
@@ -69,10 +77,10 @@ export function CancelBountyModal({ open, onOpenChange, bounty }: CancelBountyMo
             disabled={isWritePending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isWritePending ? 'Cancelling...' : 'Yes, Cancel Bounty'}
+            {isWritePending ? "Cancelling..." : "Yes, Cancel Bounty"}
           </AlertDialogAction>
         </div>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

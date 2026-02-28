@@ -1,19 +1,27 @@
 import { Token } from "./types";
+import contractAddresses from '@/lib/abis/contract-addresses.json'
+
 
 export const NETWORKS = {
   POLKADOT_HUB_TESTNET: {
     chainId: 420420417,
     name: "Polkadot Hub Testnet",
-    rpcUrl: "https://testnet-passet-hub-eth-rpc.polkadot.io",
+    rpcUrl: "https://eth-rpc-testnet.polkadot.io/",
     explorerUrl: "https://assethub-westend.subscan.io",
   },
 };
 
-export const CONTRACT_ADDRESSES = {
-  MICROBOUNTY: process.env.NEXT_PUBLIC_MICROBOUNTY_ADDRESS ?? "",
-  ERC20_USDC: process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "",
-  ERC20_USDT: process.env.NEXT_PUBLIC_USDT_ADDRESS ?? "",
-};
+export const MIN_REWARD_RAW = {
+  PAS:  BigInt('1000000000000'), // 100 PAS  × 10^10
+  USDC: BigInt('100000000'),     // 100 USDC × 10^6
+  USDT: BigInt('100000000'),     // 100 USDT × 10^6
+}
+
+export const MIN_REWARD_HUMAN = {
+  PAS:  '100',
+  USDC: '100',
+  USDT: '100',
+}
 
 export const TOKENS: { [key: string]: Token } = {
   DOT: {
@@ -27,7 +35,7 @@ export const TOKENS: { [key: string]: Token } = {
   USDC: {
     id: "usdc",
     symbol: "USDC",
-    address: CONTRACT_ADDRESSES.ERC20_USDC,
+    address: contractAddresses.USDC_ADDRESS,
     decimals: 6,
     chainId: 420420417,
     logo: "💵",
@@ -35,7 +43,7 @@ export const TOKENS: { [key: string]: Token } = {
   USDT: {
     id: "usdt",
     symbol: "USDT",
-    address: CONTRACT_ADDRESSES.ERC20_USDT,
+    address: contractAddresses.USDT_ADDRESS,
     decimals: 6,
     chainId: 420420417,
     logo: "💲",
