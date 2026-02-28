@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    esmExternals: "loose"
-  },
   serverExternalPackages: [
     "@coinbase/cdp-sdk",
-    "@base-org/account"
+    "@base-org/account",
+    "solana-program",
+    "@solana/web3.js"
   ],
   typescript: {
     ignoreBuildErrors: true,
