@@ -224,7 +224,7 @@ contract MicroBounty is ReentrancyGuard {
         if (_paymentToken == address(0)) {
             // Native DOT bounty
             require(msg.value == _reward, "msg.value must equal reward amount");
-            require(_reward >= MIN_REWARD_DOT, "Reward below minimum (0.01 DOT)");
+            require(_reward >= MIN_REWARD_DOT, "Reward below minimum (100 DOT)");
             platformStats.totalValueLockedDOT += _reward;
         } else {
             // ERC20 token bounty
