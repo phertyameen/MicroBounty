@@ -20,8 +20,7 @@ async function main() {
 
   // ── Mint targets ──────────────────────────────────────────
   const recipients = [
-    deployer.address,
-    "0x0e876A03856C41F29C9Eb544EE02B7Bf07604C30"
+    "0x56BEf1c494545C18F50d54605524844E0703501f", "0x23556d444f0b3cB3aAe2Da76886C832E4681EE3C"
   ];
   const amount = hre.ethers.parseUnits("10000", 6); // 10,000 USDC/USDT
 
