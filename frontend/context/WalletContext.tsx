@@ -23,7 +23,7 @@ import contractAddresses from "@/lib/abis/contract-addresses.json";
 const DOT_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /** PAS uses 10 decimals, not 18 like ETH */
-const PAS_DECIMALS = 10;
+const PAS_DECIMALS = 18;
 
 const STABLE_DECIMALS = 6;
 
@@ -47,7 +47,6 @@ interface WalletContextType {
   isConnecting: boolean;
   address: string | null;
   chainId: number | null;
-  walletName: string | null;
 
   /** Native PAS balance */
   pasBalance: TokenBalance | null;
@@ -86,27 +85,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [formattedPasBalance, setFormattedPasBalance] = useState<string | null>(null);
   const [chainId, setChainId]               = useState<number | null>(null);
   const [signer, setSigner]                 = useState<JsonRpcSigner | null>(null);
-  const [walletName, setWalletName]         = useState<string | null>(null);
   const [pasBalance, setPasBalance]         = useState<TokenBalance | null>(null);
   const [tokenBalances, setTokenBalances]   = useState<Record<string, TokenBalance>>({});
-
-  // ── Derive wallet name from the injected provider or AppKit state ──────────
-  const resolveWalletName = useCallback((): string | null => {
-    // AppKit exposes the active connector name via state
-    if (appKitState?.activeChain) {
-      // Try window.ethereum provider info first (EIP-6963)
-      const win = window as unknown as {
-        ethereum?: { providerInfo?: { name?: string }; isMetaMask?: boolean; isCoinbaseWallet?: boolean; isRabby?: boolean; isBraveWallet?: boolean }
-      };
-
-      if (win.ethereum?.providerInfo?.name) return win.ethereum.providerInfo.name;
-      if (win.ethereum?.isMetaMask)        return "MetaMask";
-      if (win.ethereum?.isCoinbaseWallet)  return "Coinbase Wallet";
-      if (win.ethereum?.isRabby)           return "Rabby";
-      if (win.ethereum?.isBraveWallet)     return "Brave Wallet";
-    }
-    return null;
-  }, [appKitState]);
 
   // ── Core balance fetcher — reusable so we can call it on demand ────────────
   const fetchBalances = useCallback(async (
@@ -174,7 +154,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setTokenBalances({});
         setSigner(null);
         setChainId(null);
-        setWalletName(null);
         return;
       }
 
@@ -185,7 +164,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         const ethersSigner = await ethersProvider.getSigner();
         setSigner(ethersSigner);
-        setWalletName(resolveWalletName());
         await fetchBalances(ethersProvider, address);
       } catch (error) {
         console.error("Failed to setup wallet:", error);
@@ -198,7 +176,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
 
     setup();
-  }, [walletProvider, address, resolveWalletName, fetchBalances]);
+  }, [walletProvider, address, fetchBalances]);
 
   // ── Public refresh — call this after any on-chain write ───────────────────
   const refreshBalances = useCallback(async () => {
@@ -234,7 +212,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setTokenBalances({});
       setSigner(null);
       setChainId(null);
-      setWalletName(null);
     } catch (error) {
       console.error("Failed to disconnect:", error);
       throw error;
@@ -250,7 +227,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     isConnecting,
     address: address ?? null,
     chainId,
-    walletName,
     pasBalance,
     tokenBalances,
     balance,

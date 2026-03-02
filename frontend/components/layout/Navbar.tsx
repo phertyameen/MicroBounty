@@ -5,6 +5,7 @@ import { useWallet } from '@/context/WalletContext'
 import { Button } from '@/components/ui/button'
 import { Zap, Menu, ChevronDown, Wallet } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { ThemeToggle } from '../ui/ThemeToggle'
 
 const truncateAddress = (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-3)}`
 
@@ -15,11 +16,8 @@ const navLinks = [
   { href: '/analytics', label: 'Analytics' },
 ]
 
-// ── Wallet dropdown — extracted outside Navbar for stable identity ─────────────
-
 interface WalletDropdownProps {
   address: string
-  walletName: string | null
   pasBalance: { formatted: string } | null
   tokenBalances: Record<string, { symbol: string; formatted: string }>
   onDisconnect: () => void
@@ -28,7 +26,6 @@ interface WalletDropdownProps {
 
 function WalletDropdown({
   address,
-  walletName,
   pasBalance,
   tokenBalances,
   onDisconnect,
@@ -59,9 +56,6 @@ function WalletDropdown({
       >
         <Wallet className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <div className="text-left flex-1">
-          {walletName && (
-            <p className="text-xs text-muted-foreground leading-none mb-0.5">{walletName}</p>
-          )}
           <p className="text-sm font-mono text-accent-foreground leading-none">
             {truncateAddress(address)}
           </p>
@@ -119,10 +113,8 @@ function WalletDropdown({
   )
 }
 
-// ── Navbar ─────────────────────────────────────────────────────────────────────
-
 export function Navbar() {
-  const { connected, address, connect, disconnect, walletName, pasBalance, tokenBalances } =
+  const { connected, address, connect, disconnect, pasBalance, tokenBalances } =
     useWallet()
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -160,11 +152,12 @@ export function Navbar() {
 
           {/* Desktop wallet */}
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+
             {connected && address ? (
               <div className="hidden md:block">
                 <WalletDropdown
                   address={address}
-                  walletName={walletName}
                   pasBalance={pasBalance}
                   tokenBalances={tokenBalances}
                   onDisconnect={handleDisconnect}
@@ -205,7 +198,6 @@ export function Navbar() {
               {connected && address ? (
                 <WalletDropdown
                   address={address}
-                  walletName={walletName}
                   pasBalance={pasBalance}
                   tokenBalances={tokenBalances}
                   onDisconnect={handleDisconnect}

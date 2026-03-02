@@ -31,8 +31,8 @@ import contractAddresses from "@/lib/abis/contract-addresses.json";
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 const CONTRACT_ADDRESS = contractAddresses.MicroBounty;
-const DAYS_TO_SHOW = 5;
-const BLOCKS_PER_DAY = 14_400; // ~6s block time on Polkadot Hub testnet = 10 blocks/min = 14,400/day
+const DAYS_TO_SHOW = 8;
+const BLOCKS_PER_DAY = 14_400;
 const BLOCK_LOOKBACK = DAYS_TO_SHOW * BLOCKS_PER_DAY;
 
 // Use the same RPC the context uses — DO NOT use NETWORKS constant (different URL)
@@ -395,7 +395,11 @@ export default function AnalyticsPage() {
                     strokeDasharray="3 3"
                     className="stroke-border"
                   />
-                  <XAxis dataKey="name" className="text-xs" />
+                  <XAxis
+                    dataKey="name"
+                    className="text-xs"
+                    padding={{ left: 20, right: 20 }}
+                  />
                   <YAxis className="text-xs" allowDecimals={false} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Bar dataKey="value" name="Bounties" radius={[4, 4, 0, 0]}>
