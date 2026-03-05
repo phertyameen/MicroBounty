@@ -104,10 +104,41 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
       const signerAddress = await signer.getAddress();
       const spender = contractAddresses.MicroBounty;
 
-      const currentAllowance: bigint = await tokenContract.allowance(
-        signerAddress,
-        spender,
-      );
+      let currentAllowance: bigint;
+      try {
+        currentAllowance = await tokenContract.allowance(
+          signerAddress,
+          spender,
+        );
+      } catch {
+        toast.error(`${selectedToken.symbol} not found in your wallet.`, {
+          duration: 8000,
+          description: "You need to import the token into MetaMask first.",
+          action: {
+            label: "Import Token",
+            onClick: async () => {
+              try {
+                await (window.ethereum as any).request({
+                  method: "wallet_watchAsset",
+                  params: {
+                    type: "ERC20",
+                    options: {
+                      address: formData.tokenAddress,
+                      symbol: selectedToken.symbol,
+                      decimals: selectedToken.decimals,
+                    },
+                  },
+                });
+              } catch {
+                toast.info(
+                  "Open MetaMask → Assets → Import token and paste the contract address.",
+                );
+              }
+            },
+          },
+        });
+        return false;
+      }
 
       if (currentAllowance >= BigInt(rawReward)) {
         // Already approved — no need to send a tx
@@ -159,6 +190,13 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
       return;
     }
 
+    if (isERC20 && parseFloat(formData.rewardHuman) < 100) {
+      toast.error(
+        "Minimum reward for stablecoins is 100 USDC/USDT (contract rule)",
+      );
+      return;
+    }
+
     const rawReward = toRawReward();
     if (rawReward === "0") {
       toast.error("Invalid reward amount");
@@ -200,17 +238,22 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
         });
         setStep(1);
         onSuccess?.(bountyId);
-      } else {
-        toast.error(
-          "Failed to create bounty. Check your wallet and try again.",
-        );
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Transaction failed";
-      if (msg.toLowerCase().includes("user rejected") || msg.includes("4001")) {
+      const raw = err instanceof Error ? err.message : String(err);
+
+      if (raw.toLowerCase().includes("user rejected") || raw.includes("4001")) {
         toast.error("Transaction cancelled.");
+      } else if (raw.includes("CALL_EXCEPTION")) {
+        // Contract reverted — most likely insufficient token balance
+        toast.error(
+          `Not enough ${selectedToken.symbol} balance to fund this bounty.`,
+          {
+            description: `Make sure you have at least ${formData.rewardHuman} ${selectedToken.symbol} in your wallet.`,
+          },
+        );
       } else {
-        toast.error(`Error: ${msg}`);
+        toast.error("Transaction failed. Please try again.");
       }
     } finally {
       setTxStep("idle");
@@ -223,10 +266,18 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
     formData.category !== "";
 
   const canProceedStep2 =
-    formData.rewardHuman && parseFloat(formData.rewardHuman) > 0;
+    formData.rewardHuman &&
+    parseFloat(formData.rewardHuman) > 0 &&
+    (!isERC20 || parseFloat(formData.rewardHuman) >= 100);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && step < 3) e.preventDefault();
+      }}
+      className="space-y-8"
+    >
       {/* Step indicator */}
       <div className="flex gap-2 justify-center">
         {[1, 2, 3].map((n) => (
@@ -339,6 +390,11 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
                   step="any"
                   min="0"
                 />
+                {isERC20 && (
+                  <p className="text-xs text-muted-foreground">
+                    Minimum: 100 {selectedToken.symbol}
+                  </p>
+                )}
               </div>
 
               {/* Token selector */}

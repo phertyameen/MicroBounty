@@ -1,27 +1,29 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { useWallet } from '@/context/WalletContext'
-import { Button } from '@/components/ui/button'
-import { Zap, Menu, ChevronDown, Wallet } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
-import { ThemeToggle } from '../ui/ThemeToggle'
+import Link from "next/link";
+import { useWallet } from "@/context/WalletContext";
+import { Button } from "@/components/ui/button";
+import { Zap, Menu, ChevronDown, Wallet } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ThemeToggle } from "../ui/ThemeToggle";
+import { AddNetworkButton } from "../ui/AddNetworkButton";
 
-const truncateAddress = (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-3)}`
+const truncateAddress = (addr: string) =>
+  `${addr.slice(0, 4)}...${addr.slice(-3)}`;
 
 const navLinks = [
-  { href: '/', label: 'Browse' },
-  { href: '/create', label: 'Create Bounty' },
-  { href: '/history', label: 'History' },
-  { href: '/analytics', label: 'Analytics' },
-]
+  { href: "/", label: "Browse" },
+  { href: "/create", label: "Create Bounty" },
+  { href: "/history", label: "History" },
+  { href: "/analytics", label: "Analytics" },
+];
 
 interface WalletDropdownProps {
-  address: string
-  pasBalance: { formatted: string } | null
-  tokenBalances: Record<string, { symbol: string; formatted: string }>
-  onDisconnect: () => void
-  mobile?: boolean
+  address: string;
+  pasBalance: { formatted: string } | null;
+  tokenBalances: Record<string, { symbol: string; formatted: string }>;
+  onDisconnect: () => void;
+  mobile?: boolean;
 }
 
 function WalletDropdown({
@@ -31,28 +33,28 @@ function WalletDropdown({
   onDisconnect,
   mobile = false,
 }: WalletDropdownProps) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   // Close on outside click — only active when dropdown is open
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
+        setOpen(false);
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
   return (
-    <div ref={ref} className={mobile ? 'w-full' : 'relative'}>
+    <div ref={ref} className={mobile ? "w-full" : "relative"}>
       {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/80 transition-colors ${mobile ? 'w-full' : ''}`}
+        className={`cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/80 transition-colors ${mobile ? "w-full" : ""}`}
       >
         <Wallet className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <div className="text-left flex-1">
@@ -61,7 +63,7 @@ function WalletDropdown({
           </p>
         </div>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -69,7 +71,7 @@ function WalletDropdown({
       {open && (
         <div
           className={`
-            ${mobile ? 'relative mt-1' : 'absolute right-0 top-full mt-1'}
+            ${mobile ? "relative mt-1" : "absolute right-0 top-full mt-1"}
             w-56 rounded-lg border border-border bg-popover shadow-lg z-50 p-3 space-y-3
           `}
         >
@@ -81,12 +83,15 @@ function WalletDropdown({
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">PAS</span>
               <span className="font-medium font-mono">
-                {pasBalance ? pasBalance.formatted : '—'}
+                {pasBalance ? pasBalance.formatted : "—"}
               </span>
             </div>
 
             {Object.values(tokenBalances).map((tb) => (
-              <div key={tb.symbol} className="flex justify-between items-center text-sm">
+              <div
+                key={tb.symbol}
+                className="flex justify-between items-center text-sm"
+              >
                 <span className="text-muted-foreground">{tb.symbol}</span>
                 <span className="font-medium font-mono">{tb.formatted}</span>
               </div>
@@ -100,8 +105,8 @@ function WalletDropdown({
               size="sm"
               className="w-full"
               onClick={() => {
-                setOpen(false)
-                onDisconnect()
+                setOpen(false);
+                onDisconnect();
               }}
             >
               Disconnect
@@ -110,25 +115,33 @@ function WalletDropdown({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export function Navbar() {
-  const { connected, address, connect, disconnect, pasBalance, tokenBalances } =
-    useWallet()
+  const {
+    connected,
+    address,
+    connect,
+    disconnect,
+    pasBalance,
+    tokenBalances,
+    isConnecting,
+  } = useWallet();
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleDisconnect = () => {
-    disconnect()
-    setMobileMenuOpen(false)
-  }
+    disconnect();
+    setMobileMenuOpen(false);
+  };
 
   return (
     <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <AddNetworkButton />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
@@ -164,8 +177,13 @@ export function Navbar() {
                 />
               </div>
             ) : (
-              <Button onClick={connect} size="sm" className="hidden md:inline-flex">
-                Connect Wallet
+              <Button
+                onClick={connect}
+                size="sm"
+                disabled={isConnecting}
+                className="hidden md:inline-flex"
+              >
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
               </Button>
             )}
 
@@ -205,11 +223,15 @@ export function Navbar() {
                 />
               ) : (
                 <Button
-                  onClick={() => { connect(); setMobileMenuOpen(false) }}
+                  onClick={() => {
+                    connect();
+                    setMobileMenuOpen(false);
+                  }}
                   size="sm"
+                  disabled={isConnecting}
                   className="w-full"
                 >
-                  Connect Wallet
+                  {isConnecting ? 'Connecting...' : 'Connect Wallet'}
                 </Button>
               )}
             </div>
@@ -217,5 +239,5 @@ export function Navbar() {
         )}
       </div>
     </nav>
-  )
+  );
 }

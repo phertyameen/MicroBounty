@@ -1,224 +1,160 @@
 # MicroBounty
 
-### A modern bounty platform for distributed work in the Polkadot ecosystem
+> **A decentralized bounty marketplace built natively on Polkadot Hub**
 
-![desktop home page view](image.png)
-[Live Demo](https://micro-bounty.vercel.app/) • [Smart Contract](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index) • [Documentation](https://docs.google.com/document/d/1gseSAdZQhias-iK6Pxc9hqP43uxKs-K6dFzrYY1ExbQ/edit?tab=t.0)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-micro--bounty.vercel.app-brightgreen?style=for-the-badge)](https://micro-bounty.vercel.app/)
+[![Smart Contract](https://img.shields.io/badge/Contract-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
+[![OpenGuild Hackathon](https://img.shields.io/badge/OpenGuild-Hackathon%202025-E6007A?style=for-the-badge)](https://openguild.wtf)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
----
+![MicroBounty Homepage](image.png)
+
+## What Is MicroBounty?
+
+MicroBounty is an on-chain bounty platform that lets projects post tasks and pay contributors **instantly and trustlessly** using native **DOT** or stablecoins (**USDC, USDT**) on **Polkadot Hub**.
+
+No middlemen. No escrow disputes. No waiting. Work gets done, payment gets sent.
 
 ## The Problem
 
-Polkadot's ecosystem is growing fast, but coordinating work across parachains remains fragmented. Projects struggle to attract contributors for small tasks. Developers can't easily find paid opportunities. Bounty systems exist, but they're scattered, complex, and don't support the currencies people actually want to use.
+Polkadot's ecosystem is growing fast, but coordinating small paid work is still painful:
 
-The result? Valuable work goes undone. Talented developers miss opportunities. Projects move slower than they should.
+- Projects post bounties in Discord and lose track of them
+- Contributors do work with no guarantee of payment  
+- Existing bounty tools don't support DOT or Polkadot-native currencies
+- Grant processes are too heavy for small tasks
 
----
+## The Solution
 
-## Our Solution
-
-MicroBounty makes it simple to post tasks, submit work, and get paid—in the currency of your choice.
-
-**For Projects:**
-
-- Post bounties in DOT or stablecoins (USDC, USDT)
-- Review submissions and approve instantly
-- Track all activity in one dashboard
-- Cancel anytime if priorities change
-
-**For Developers:**
-
-- Browse opportunities across the entire ecosystem
-- Submit proof of work with a single link
-- Get paid immediately on approval
-- Build your reputation on-chain
-
-**For the Ecosystem:**
-
-- Reduces coordination overhead between projects and contributors
-- Creates transparent incentives for ecosystem development
-- Enables micro-payments that would be impractical elsewhere
-- Provides data on what work is in demand
-
----
-
-## Why It Matters
-
-Every major blockchain ecosystem needs efficient labor markets. As Polkadot scales to hundreds of parachains, we need infrastructure that makes it trivially easy to coordinate work across chains and communities.
-
-**MicroBounty is that infrastructure.**
-
-Instead of projects hiring full-time or navigating complex grant processes for small tasks, they can post a bounty and have work completed in days. Instead of developers pitching speculatively, they can browse real opportunities with guaranteed payment.
-
-This accelerates the entire ecosystem.
-
----
+| For Projects | For Contributors |
+|---|---|
+| Post bounties in DOT or stablecoins | Browse real paid opportunities |
+| Funds locked in escrow automatically | Get paid the moment work is approved |
+| Approve or cancel with one click | Build an on-chain work history |
+| Full analytics dashboard | No upfront networking required |
 
 ## How It Works
+```
+1. CREATE    →   Project posts bounty — funds locked in escrow on-chain
+2. SUBMIT    →   Developer submits proof of work (GitHub PR, link, etc.)
+3. APPROVE   →   Project approves — payment transfers instantly, trustlessly
+```
 
-**1. Create a Bounty**
-Project posts: _"Add dark mode to our dApp - 5 DOT"_
-Funds are locked in escrow automatically.
+Status lifecycle: `OPEN → IN_PROGRESS → COMPLETED` (or `CANCELLED` before submission)
 
-**2. Submit Work**
-Developer completes the task, submits GitHub PR.
-Status updates to "In Progress."
+## Why Polkadot Hub?
 
-**3. Get Paid**
-Project reviews, approves with one click.
-Payment transfers instantly. Status: "Completed."
+MicroBounty is built **specifically** for Polkadot Hub, not ported from another chain.
 
-Simple as that.
+### Native DOT Payments (10 Decimals)
 
----
+DOT has 10 decimal places — not 18 like ETH. Our contract and frontend handle this as a first-class design decision throughout, with no silent precision loss.
+```solidity
+uint256 public constant MIN_REWARD_DOT = 100e10; // 100 DOT, correct decimals
+```
+```ts
+// Every DOT display and input in the frontend
+ethers.formatUnits(amount, 10)
+ethers.parseUnits(input, 10)
+```
 
-## Technical Architecture
+### EVM on Polkadot Hub
 
-**Smart Contract:**
+We deploy Solidity contracts directly on Polkadot Hub's EVM layer — demonstrating the full Hardhat → Polkadot Hub pipeline end-to-end with real users and live transactions.
 
-- Solidity 0.8.20 on Polkadot Hub (EVM-compatible)
-- Multi-currency escrow (native DOT + ERC20 stablecoins)
-- OpenZeppelin security standards (ReentrancyGuard, SafeERC20)
-- Comprehensive on-chain analytics
+### Multi-Wallet Support
 
-**Frontend:**
+Supports MetaMask, SubWallet, Talisman, and any EIP-1193 wallet via Reown AppKit.
 
-- Next.js 16 with TypeScript
-- Real-time transaction updates
-- Mobile-responsive design
-- Multi-wallet support (MetaMask, SubWallet, Talisman)
+### Deployed and Verifiable
 
-**Security:**
-
-- Audited OpenZeppelin libraries
-- Reentrancy protection on all payment functions
-- Comprehensive input validation
-- 95%+ test coverage
-
-[View Contract Source](https://github.com/phertyameen/MicroBounty/blob/main/contract/contracts/MicroBounty.sol)
-
----
-
-## Use Cases
-
-| Task Type           | Example                                         |
-| ------------------- | ----------------------------------------------- |
-| Bug Bounties        | "Fix swap function gas optimization - 100 USDC" |
-| Design Work         | "Create logo for our parachain - 150 DOT"        |
-| Documentation       | "Write integration guide for our SDK - 150 USDC" |
-| Content Creation    | "Record video tutorial for our dApp - 300 DOT"   |
-| Feature Development | "Add wallet connect to our frontend - 200 USDC" |
-
-Any task with clear deliverables. Any currency. Any scale.
-
----
+[`0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5`](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5) on Polkadot Hub Testnet (Chain ID: `420420417`).
 
 ## Platform Statistics
 
-> _Testnet stats as of March 2026_
+> *Testnet — March 2026*
 
-| Metric               | Value    |
-| -------------------- | -------- |
-| Total Value Locked   | $125,000 |
-| Paid to Contributors | $89,000  |
-| Bounties Posted      | 450+     |
-| Completion Rate      | 92%      |
-| Active Users         | 156      |
+| Metric | Value |
+|---|---|
+| Total Value Transacted | $12,000+ |
+| Paid to Contributors | $1,900+ |
+| Bounties Posted | 20+ |
+| Completion Rate | 50% |
+| Cancellation Rate | 8% |
 
----
+## Technical Architecture
 
-## Getting Started
+### Smart Contract (`/contract`)
 
-**For Projects:**
+- Solidity 0.8.28 · Hardhat · Polkadot Hub Testnet
+- Multi-currency escrow — native DOT + ERC20 (USDC, USDT)
+- OpenZeppelin ReentrancyGuard + SafeERC20
+- Checks-Effects-Interactions on all payment functions
+- On-chain analytics — platform stats, per-user stats, currency breakdown
+- 41 passing tests — full lifecycle coverage
 
-1. Connect your wallet to [microbounty.vercel.app](https://microbounty.vercel.app)
-2. Click "Create Bounty" and fill in the details
-3. Choose DOT or stablecoins for payment
-4. Approve the transaction — your bounty is live
+### Frontend (`/frontend`)
 
-**For Developers:**
-
-1. Browse available bounties at [microbounty.vercel.app](https://microbounty.vercel.app)
-2. Find one that matches your skills
-3. Complete the work and submit your proof
-4. Get paid when approved — usually within 24 hours
-
----
+- Next.js 15 (App Router) + TypeScript
+- Tailwind CSS — responsive, dark/light mode
+- Reown AppKit — MetaMask, SubWallet, Talisman
+- ethers.js v6 — correct 10-decimal DOT handling throughout
+- `BountyContext` — on-chain state, filtering, pagination
+- `WalletContext` — PAS + ERC20 balance fetching, wallet name detection
 
 ## Roadmap
 
-**Current (v1.0):**
+**v1.0 — Live ✅**
+- Multi-currency bounties (DOT, USDC, USDT)
+- Trustless escrow and instant payment
+- On-chain analytics and transaction history
+- Mobile-responsive UI, dark/light mode
 
-- ✅ Multi-currency bounties (DOT, USDC, USDT)
-- ✅ Instant escrow and payment
-- ✅ Transaction history and analytics
-- ✅ Mobile-responsive interface
+**v2.0 — Planned 🔄**
+- XCM integration for cross-chain bounties
+- On-chain reputation system
+- Milestone-based payments
+- Dispute resolution
 
-**Coming Soon (v2.0):**
+**v3.0 — Vision 🔭**
+- Parachain governance integration
+- GitHub issue → bounty automation
+- Skills-based contributor matching
 
-- 🔄 XCM integration for true cross-chain bounties
-- 🔄 Reputation system for hunters and projects
-- 🔄 Milestone-based payments for larger projects
-- 🔄 Dispute resolution mechanism
-- 🔄 API for external integrations
+## Repository Structure
+```
+MicroBounty/
+├── contract/
+│   ├── contracts/MicroBounty.sol
+│   ├── contracts/MockERC20.sol
+│   ├── test/MicroBounty.test.js
+│   ├── scripts/deploy.js
+│   ├── scripts/deployMocks.js
+│   └── README.md
+└── frontend/
+    ├── app/
+    ├── components/
+    ├── context/
+    │   ├── BountyContext.tsx
+    │   └── WalletContext.tsx
+    ├── lib/
+    └── README.md
+```
 
-**Vision (v3.0):**
+## Contributing
+```bash
+git clone https://github.com/phertyameen/MicroBounty/
+```
 
-- Integration with parachain governance systems
-- Automated bounty creation from GitHub issues
-- Skills-based matching between projects and developers
-- Grant-to-bounty conversion tools
-
----
-
-## Contributing to Polkadot's Growth
-
-MicroBounty is designed to be infrastructure that benefits everyone:
-
-**For Parachains:** Get work done faster without full hiring processes. Test contributors before committing to long-term relationships.
-
-**For DAOs:** Incentivize community contributions with transparent, on-chain payments. Replace opaque grant processes with clear bounties.
-
-**For Developers:** Build reputation and income while contributing to projects you believe in. No upfront networking required.
-
-**For the Ecosystem:** Create visibility into what work needs doing. Generate data on developer skills and project needs. Reduce friction in the labor market.
-
-This is how healthy ecosystems scale.
-
----
-
-## Community & Support
-
-- **Discord:** [Join the conversation](#)
-- **Twitter:** [@MicroBounty](#)
-- **Email:** hello@microbounty.io
-
-For technical support or partnership inquiries, reach out on Discord.
-
----
-
-## Built On Polkadot Hub
-
-MicroBounty leverages Polkadot Hub's EVM compatibility to bring Solidity smart contracts to the Polkadot ecosystem for the first time. This combines Ethereum's mature tooling with Polkadot's scalability and interoperability.
-
-We're excited to be part of the first wave of applications showing what's possible when these two worlds meet.
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
+- Smart Contract: [`contract/README.md`](contract/README.md)
+- Frontend: [`frontend/README.md`](frontend/README.md)
 
 ## Team
 
-Built by [Your Name] with support from the Polkadot community.
+Built by **Fatima Aminu** for the **OpenGuild Hackathon 2025**.
 
-Special thanks to [OpenGuild](https://openguild.wtf) and [Web3 Foundation](https://web3.foundation) for supporting ecosystem builders.
+Special thanks to [OpenGuild](https://openguild.wtf) and [Web3 Foundation](https://web3.foundation).
 
----
+**Contact:** [@teemahbee](https://t.me/teemahbee) · [LinkedIn](https://www.linkedin.com/in/fatima-aminu-839835176/) · [Gmail](aminubabafatima8@gmail.com)
 
-_Making distributed work work._
-
-**MicroBounty: Where projects and talent meet**
+[MIT License](LICENSE) · *MicroBounty — where projects and talent meet on Polkadot.*

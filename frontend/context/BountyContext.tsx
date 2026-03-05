@@ -662,6 +662,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         setError(
           err instanceof Error ? err.message : "Failed to create bounty",
         );
+        throw err
         return null;
       } finally {
         setIsWritePending(false);
@@ -732,7 +733,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         setError(
           err instanceof Error ? err.message : "Failed to approve bounty",
         );
-        return false;
+        throw err
       } finally {
         setIsWritePending(false);
       }
@@ -777,7 +778,7 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
         setError(
           err instanceof Error ? err.message : "Failed to cancel bounty",
         );
-        return false;
+        throw err
       } finally {
         setIsWritePending(false);
       }
