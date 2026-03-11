@@ -1,12 +1,14 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+const {
+  loadFixture,
+} = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
 // ─── Constants (mirror the contract) ─────────────────────────────────────────
 
-const MIN_DOT    = ethers.parseUnits("100", 10); // 100 DOT  (10 decimals)
-const MIN_STABLE = ethers.parseUnits("100", 6);  // 100 USDC (6 decimals)
-const ZERO_ADDR  = ethers.ZeroAddress;
+const MIN_DOT = ethers.parseUnits("100", 10); // 100 DOT  (10 decimals)
+const MIN_STABLE = ethers.parseUnits("100", 6); // 100 USDC (6 decimals)
+const ZERO_ADDR = ethers.ZeroAddress;
 
 // ─── Fixture ──────────────────────────────────────────────────────────────────
 
@@ -15,10 +17,10 @@ async function deployFixture() {
 
   const ERC20 = await ethers.getContractFactory("MockERC20");
   const usdc = await ERC20.deploy("USD Coin", "USDC", 6);
-  const usdt = await ERC20.deploy("Tether",   "USDT", 6);
+  const usdt = await ERC20.deploy("Tether", "USDT", 6);
 
   const Factory = await ethers.getContractFactory("MicroBounty");
-  const bounty  = await Factory.deploy([
+  const bounty = await Factory.deploy([
     await usdc.getAddress(),
     await usdt.getAddress(),
   ]);
@@ -47,7 +49,12 @@ async function createDotBounty(bounty, signer, reward = MIN_DOT) {
   );
 }
 
-async function createStableBounty(bounty, signer, tokenAddr, reward = MIN_STABLE) {
+async function createStableBounty(
+  bounty,
+  signer,
+  tokenAddr,
+  reward = MIN_STABLE,
+) {
   return bounty.connect(signer).createBounty(
     "Stable Bounty",
     "A description for the stable bounty that is long enough",
@@ -60,7 +67,6 @@ async function createStableBounty(bounty, signer, tokenAddr, reward = MIN_STABLE
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("MicroBounty", function () {
-
   // ── Deployment ──────────────────────────────────────────────────────────────
 
   describe("Deployment", function () {
@@ -120,11 +126,16 @@ describe("MicroBounty", function () {
       it("rejects msg.value != reward", async function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         await expect(
-          bounty.connect(creator).createBounty(
-            "Title", "Description that is long enough for the contract",
-            MIN_DOT, ZERO_ADDR, 0,
-            { value: MIN_DOT - 1n },
-          ),
+          bounty
+            .connect(creator)
+            .createBounty(
+              "Title",
+              "Description that is long enough for the contract",
+              MIN_DOT,
+              ZERO_ADDR,
+              0,
+              { value: MIN_DOT - 1n },
+            ),
         ).to.be.revertedWith("msg.value must equal reward amount");
       });
 
@@ -132,48 +143,68 @@ describe("MicroBounty", function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         const tooLow = MIN_DOT - 1n;
         await expect(
-          bounty.connect(creator).createBounty(
-            "Title", "Description that is long enough for the contract",
-            tooLow, ZERO_ADDR, 0,
-            { value: tooLow },
-          ),
+          bounty
+            .connect(creator)
+            .createBounty(
+              "Title",
+              "Description that is long enough for the contract",
+              tooLow,
+              ZERO_ADDR,
+              0,
+              { value: tooLow },
+            ),
         ).to.be.revertedWith("Reward below minimum (100 DOT)");
       });
 
       it("rejects empty title", async function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         await expect(
-          bounty.connect(creator).createBounty(
-            "", "Description", MIN_DOT, ZERO_ADDR, 0, { value: MIN_DOT },
-          ),
+          bounty
+            .connect(creator)
+            .createBounty("", "Description", MIN_DOT, ZERO_ADDR, 0, {
+              value: MIN_DOT,
+            }),
         ).to.be.revertedWith("Title must be 1-100 characters");
       });
 
       it("rejects title over 100 chars", async function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         await expect(
-          bounty.connect(creator).createBounty(
-            "a".repeat(101), "Description", MIN_DOT, ZERO_ADDR, 0, { value: MIN_DOT },
-          ),
+          bounty
+            .connect(creator)
+            .createBounty(
+              "a".repeat(101),
+              "Description",
+              MIN_DOT,
+              ZERO_ADDR,
+              0,
+              { value: MIN_DOT },
+            ),
         ).to.be.revertedWith("Title must be 1-100 characters");
       });
 
       it("rejects invalid category", async function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         await expect(
-          bounty.connect(creator).createBounty(
-            "Title", "Description", MIN_DOT, ZERO_ADDR, 5, { value: MIN_DOT },
-          ),
+          bounty
+            .connect(creator)
+            .createBounty("Title", "Description", MIN_DOT, ZERO_ADDR, 5, {
+              value: MIN_DOT,
+            }),
         ).to.be.revertedWith("Invalid category");
       });
     });
 
     describe("ERC20 (stablecoin)", function () {
       it("pulls tokens from creator into the contract", async function () {
-        const { bounty, usdc, creator, contractAddr } = await loadFixture(deployFixture);
+        const { bounty, usdc, creator, contractAddr } = await loadFixture(
+          deployFixture,
+        );
         const before = await usdc.balanceOf(creator.address);
         await createStableBounty(bounty, creator, await usdc.getAddress());
-        expect(await usdc.balanceOf(creator.address)).to.equal(before - MIN_STABLE);
+        expect(await usdc.balanceOf(creator.address)).to.equal(
+          before - MIN_STABLE,
+        );
         expect(await usdc.balanceOf(contractAddr)).to.equal(MIN_STABLE);
       });
 
@@ -188,19 +219,25 @@ describe("MicroBounty", function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         const rando = ethers.Wallet.createRandom().address;
         await expect(
-          bounty.connect(creator).createBounty(
-            "Title", "Description", MIN_STABLE, rando, 0,
-          ),
+          bounty
+            .connect(creator)
+            .createBounty("Title", "Description", MIN_STABLE, rando, 0),
         ).to.be.revertedWith("Token is not supported");
       });
 
       it("rejects msg.value > 0 alongside ERC20", async function () {
         const { bounty, usdc, creator } = await loadFixture(deployFixture);
         await expect(
-          bounty.connect(creator).createBounty(
-            "Title", "Description", MIN_STABLE, await usdc.getAddress(), 0,
-            { value: 1n },
-          ),
+          bounty
+            .connect(creator)
+            .createBounty(
+              "Title",
+              "Description",
+              MIN_STABLE,
+              await usdc.getAddress(),
+              0,
+              { value: 1n },
+            ),
         ).to.be.revertedWith("Do not send DOT when using an ERC20 token");
       });
     });
@@ -212,7 +249,9 @@ describe("MicroBounty", function () {
     it("moves bounty to IN_PROGRESS and sets hunter", async function () {
       const { bounty, creator, hunter } = await loadFixture(deployFixture);
       await createDotBounty(bounty, creator);
-      await bounty.connect(hunter).submitWork(1, "https://github.com/pr/1", "Done");
+      await bounty
+        .connect(hunter)
+        .submitWork(1, "https://github.com/pr/1", "Done");
       const b = await bounty.getBounty(1);
       expect(b.status).to.equal(1); // IN_PROGRESS
       expect(b.hunter).to.equal(hunter.address);
@@ -236,7 +275,9 @@ describe("MicroBounty", function () {
     });
 
     it("rejects submission on non-OPEN bounty", async function () {
-      const { bounty, creator, hunter, other } = await loadFixture(deployFixture);
+      const { bounty, creator, hunter, other } = await loadFixture(
+        deployFixture,
+      );
       await createDotBounty(bounty, creator);
       await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
       await expect(
@@ -256,7 +297,9 @@ describe("MicroBounty", function () {
       const { bounty, creator, hunter } = await loadFixture(deployFixture);
       await createDotBounty(bounty, creator);
       await expect(
-        bounty.connect(hunter).submitWork(1, "https://proof.url", "n".repeat(201)),
+        bounty
+          .connect(hunter)
+          .submitWork(1, "https://proof.url", "n".repeat(201)),
       ).to.be.revertedWith("Notes exceed 200 character limit");
     });
 
@@ -302,20 +345,26 @@ describe("MicroBounty", function () {
         const { bounty, creator, hunter } = await loadFixture(deployFixture);
         await createDotBounty(bounty, creator);
         await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
-        await expect(bounty.connect(creator).approveBounty(1))
-          .to.emit(bounty, "BountyCompleted");
+        await expect(bounty.connect(creator).approveBounty(1)).to.emit(
+          bounty,
+          "BountyCompleted",
+        );
       });
     });
 
     describe("ERC20 (USDC)", function () {
       it("transfers USDC to hunter and decrements locked stable", async function () {
-        const { bounty, usdc, creator, hunter } = await loadFixture(deployFixture);
+        const { bounty, usdc, creator, hunter } = await loadFixture(
+          deployFixture,
+        );
         await createStableBounty(bounty, creator, await usdc.getAddress());
         await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
 
         const before = await usdc.balanceOf(hunter.address);
         await bounty.connect(creator).approveBounty(1);
-        expect(await usdc.balanceOf(hunter.address)).to.equal(before + MIN_STABLE);
+        expect(await usdc.balanceOf(hunter.address)).to.equal(
+          before + MIN_STABLE,
+        );
 
         const stats = await bounty.getPlatformStats();
         expect(stats.totalValueLockedStable).to.equal(0);
@@ -324,7 +373,9 @@ describe("MicroBounty", function () {
     });
 
     it("rejects non-creator calling approve", async function () {
-      const { bounty, creator, hunter, other } = await loadFixture(deployFixture);
+      const { bounty, creator, hunter, other } = await loadFixture(
+        deployFixture,
+      );
       await createDotBounty(bounty, creator);
       await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
       await expect(bounty.connect(other).approveBounty(1)).to.be.revertedWith(
@@ -360,10 +411,10 @@ describe("MicroBounty", function () {
         await createDotBounty(bounty, creator);
 
         const before = await ethers.provider.getBalance(creator.address);
-        const tx      = await bounty.connect(creator).cancelBounty(1);
+        const tx = await bounty.connect(creator).cancelBounty(1);
         const receipt = await tx.wait();
         const gasCost = receipt.gasUsed * receipt.gasPrice;
-        const after   = await ethers.provider.getBalance(creator.address);
+        const after = await ethers.provider.getBalance(creator.address);
 
         expect(after - before + gasCost).to.equal(MIN_DOT);
         expect((await bounty.getBounty(1)).status).to.equal(3); // CANCELLED
@@ -383,8 +434,10 @@ describe("MicroBounty", function () {
       it("emits BountyCancelled", async function () {
         const { bounty, creator } = await loadFixture(deployFixture);
         await createDotBounty(bounty, creator);
-        await expect(bounty.connect(creator).cancelBounty(1))
-          .to.emit(bounty, "BountyCancelled");
+        await expect(bounty.connect(creator).cancelBounty(1)).to.emit(
+          bounty,
+          "BountyCancelled",
+        );
       });
     });
 
@@ -434,7 +487,9 @@ describe("MicroBounty", function () {
 
   describe("Platform stats integrity", function () {
     it("tracks multiple bounties across the full lifecycle", async function () {
-      const { bounty, usdc, creator, hunter } = await loadFixture(deployFixture);
+      const { bounty, usdc, creator, hunter } = await loadFixture(
+        deployFixture,
+      );
       const usdcAddr = await usdc.getAddress();
 
       // Create 2 DOT + 1 USDC bounty
@@ -465,7 +520,7 @@ describe("MicroBounty", function () {
       expect(stats.cancelledBounties).to.equal(1);
       expect(stats.totalValueLockedDOT).to.equal(0);
       expect(stats.totalValueLockedStable).to.equal(0);
-      expect(stats.totalPaidOutDOT).to.equal(MIN_DOT);       // only #1
+      expect(stats.totalPaidOutDOT).to.equal(MIN_DOT); // only #1
       expect(stats.totalPaidOutStable).to.equal(MIN_STABLE); // only #3
     });
   });
@@ -479,7 +534,7 @@ describe("MicroBounty", function () {
       await createDotBounty(bounty, creator); // #2
       await bounty.connect(hunter).submitWork(1, "https://proof.url", ""); // #1 → IN_PROGRESS
 
-      const open       = await bounty.getBountiesByStatus(0);
+      const open = await bounty.getBountiesByStatus(0);
       const inProgress = await bounty.getBountiesByStatus(1);
       expect(open.map(Number)).to.deep.equal([2]);
       expect(inProgress.map(Number)).to.deep.equal([1]);
@@ -492,8 +547,12 @@ describe("MicroBounty", function () {
       await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
       await bounty.connect(hunter).submitWork(2, "https://proof2.url", "");
 
-      expect((await bounty.getUserBounties(creator.address)).map(Number)).to.deep.equal([1, 2]);
-      expect((await bounty.getUserSubmissions(hunter.address)).map(Number)).to.deep.equal([1, 2]);
+      expect(
+        (await bounty.getUserBounties(creator.address)).map(Number),
+      ).to.deep.equal([1, 2]);
+      expect(
+        (await bounty.getUserSubmissions(hunter.address)).map(Number),
+      ).to.deep.equal([1, 2]);
     });
 
     it("getBountiesByToken returns correct IDs", async function () {
@@ -501,8 +560,146 @@ describe("MicroBounty", function () {
       await createDotBounty(bounty, creator);
       await createStableBounty(bounty, creator, await usdc.getAddress());
 
-      expect((await bounty.getBountiesByToken(ZERO_ADDR)).map(Number)).to.deep.equal([1]);
-      expect((await bounty.getBountiesByToken(await usdc.getAddress())).map(Number)).to.deep.equal([2]);
+      expect(
+        (await bounty.getBountiesByToken(ZERO_ADDR)).map(Number),
+      ).to.deep.equal([1]);
+      expect(
+        (await bounty.getBountiesByToken(await usdc.getAddress())).map(Number),
+      ).to.deep.equal([2]);
+    });
+
+    describe("getStatistics", function () {
+      it("returns correct top-level counters across lifecycle", async function () {
+        const { bounty, creator, hunter } = await loadFixture(deployFixture);
+
+        await createDotBounty(bounty, creator); // #1
+        await createDotBounty(bounty, creator); // #2
+        await createDotBounty(bounty, creator); // #3
+
+        await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
+        await bounty.connect(creator).approveBounty(1); // completed
+        await bounty.connect(creator).cancelBounty(2); // cancelled
+        // #3 stays OPEN
+
+        const [total, active, completed, cancelled] =
+          await bounty.getStatistics();
+        expect(total).to.equal(3);
+        expect(active).to.equal(1);
+        expect(completed).to.equal(1);
+        expect(cancelled).to.equal(1);
+      });
+    });
+
+    describe("getUserStatistics", function () {
+      it("returns correct per-user summary for creator and hunter", async function () {
+        const { bounty, usdc, creator, hunter } = await loadFixture(
+          deployFixture,
+        );
+
+        await createDotBounty(bounty, creator);
+        await createStableBounty(bounty, creator, await usdc.getAddress());
+
+        await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
+        await bounty.connect(creator).approveBounty(1); // hunter earns DOT
+
+        await bounty.connect(hunter).submitWork(2, "https://proof2.url", "");
+        await bounty.connect(creator).approveBounty(2); // hunter earns stable
+
+        const [created, completed, earnedDOT, earnedStable] =
+          await bounty.getUserStatistics(hunter.address);
+
+        expect(created).to.equal(0);
+        expect(completed).to.equal(2);
+        expect(earnedDOT).to.equal(MIN_DOT);
+        expect(earnedStable).to.equal(MIN_STABLE);
+      });
+
+      it("returns zeroes for an address with no activity", async function () {
+        const { bounty, other } = await loadFixture(deployFixture);
+        const [created, completed, earnedDOT, earnedStable] =
+          await bounty.getUserStatistics(other.address);
+
+        expect(created).to.equal(0);
+        expect(completed).to.equal(0);
+        expect(earnedDOT).to.equal(0);
+        expect(earnedStable).to.equal(0);
+      });
+    });
+
+    describe("getCurrencyStats", function () {
+      it("counts DOT and ERC20 bounties separately", async function () {
+        const { bounty, usdc, usdt, creator } = await loadFixture(
+          deployFixture,
+        );
+
+        await createDotBounty(bounty, creator);
+        await createDotBounty(bounty, creator);
+        await createStableBounty(bounty, creator, await usdc.getAddress());
+        await createStableBounty(bounty, creator, await usdt.getAddress());
+
+        const { dotBounties, tokenBounties, tokens } =
+          await bounty.getCurrencyStats();
+
+        expect(dotBounties).to.equal(2);
+
+        const usdcIndex = tokens.indexOf(await usdc.getAddress());
+        const usdtIndex = tokens.indexOf(await usdt.getAddress());
+        expect(tokenBounties[usdcIndex]).to.equal(1);
+        expect(tokenBounties[usdtIndex]).to.equal(1);
+      });
+
+      it("returns zero counts when no bounties exist", async function () {
+        const { bounty } = await loadFixture(deployFixture);
+        const { dotBounties, tokenBounties } = await bounty.getCurrencyStats();
+
+        expect(dotBounties).to.equal(0);
+        expect(tokenBounties.every((n) => n === 0n)).to.be.true;
+      });
+    });
+
+    // ── getBountiesByCreator ─────────────────────────────────────────────────────
+
+    describe("getBountiesByCreator", function () {
+      it("returns all bounty IDs created by a specific address", async function () {
+        const { bounty, creator } = await loadFixture(deployFixture);
+        await createDotBounty(bounty, creator);
+        await createDotBounty(bounty, creator);
+
+        const result = await bounty.getBountiesByCreator(creator.address);
+        expect(result.map(Number)).to.deep.equal([1, 2]);
+      });
+    });
+
+    // ── getUserStats ─────────────────────────────────────────────────────────────
+
+    describe("getUserStats", function () {
+      it("returns the full UserStats struct for a user", async function () {
+        const { bounty, usdc, creator, hunter } = await loadFixture(
+          deployFixture,
+        );
+        await createDotBounty(bounty, creator);
+        await createStableBounty(bounty, creator, await usdc.getAddress());
+        await bounty.connect(hunter).submitWork(1, "https://proof.url", "");
+        await bounty.connect(creator).approveBounty(1);
+
+        const stats = await bounty.getUserStats(hunter.address);
+        expect(stats.bountiesCompleted).to.equal(1);
+        expect(stats.totalEarnedDOT).to.equal(MIN_DOT);
+        expect(stats.totalEarnedStable).to.equal(0);
+      });
+    });
+
+    // ── getSupportedTokens ───────────────────────────────────────────────────────
+
+    describe("getSupportedTokens", function () {
+      it("returns the full list of whitelisted token addresses", async function () {
+        const { bounty, usdc, usdt } = await loadFixture(deployFixture);
+        const tokens = await bounty.getSupportedTokens();
+
+        expect(tokens).to.include(await usdc.getAddress());
+        expect(tokens).to.include(await usdt.getAddress());
+        expect(tokens.length).to.equal(2);
+      });
     });
 
     it("getBountyCount increments correctly", async function () {
@@ -515,13 +712,25 @@ describe("MicroBounty", function () {
     });
   });
 
+  // ── MockERC20 ────────────────────────────────────────────────────────────────
+
+  describe("MockERC20", function () {
+    it("returns the correct decimals", async function () {
+      const { usdc, usdt } = await loadFixture(deployFixture);
+      expect(await usdc.decimals()).to.equal(6);
+      expect(await usdt.decimals()).to.equal(6);
+    });
+  });
   // ── receive() fallback ───────────────────────────────────────────────────────
 
   describe("receive()", function () {
     it("rejects plain ETH/DOT transfers", async function () {
       const { creator, contractAddr } = await loadFixture(deployFixture);
       await expect(
-        creator.sendTransaction({ to: contractAddr, value: ethers.parseEther("1") }),
+        creator.sendTransaction({
+          to: contractAddr,
+          value: ethers.parseEther("1"),
+        }),
       ).to.be.revertedWith("Use createBounty to fund bounties");
     });
   });
