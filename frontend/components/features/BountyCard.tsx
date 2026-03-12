@@ -45,7 +45,7 @@ export function BountyCard({ bounty }: BountyCardProps) {
             <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 flex-1">
               {bounty.title}
             </h3>
-            <Badge className={`whitespace-nowrap flex-shrink-0 ${STATUS_COLORS[statusColorKey]}`}>
+            <Badge className={`whitespace-nowrap shrink-0 ${STATUS_COLORS[statusColorKey]}`}>
               {statusLabel}
             </Badge>
           </div>

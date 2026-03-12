@@ -3,10 +3,15 @@
 > **A decentralized bounty marketplace built natively on Polkadot Hub**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-micro--bounty.vercel.app-brightgreen?style=for-the-badge)](https://micro-bounty.vercel.app/)
-[![Smart Contract](https://img.shields.io/badge/Contract-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
-[![OpenGuild Hackathon](https://img.shields.io/badge/OpenGuild-Hackathon%202026-E6007A?style=for-the-badge)](https://dorahacks.io/hackathon/polkadot-solidity-hackathon)
-<!-- [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE) -->
-
+<br>
+[![Smart Contract](https://img.shields.io/badge/Contract-0x73fC...84AC5-gray?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
+<br>
+[![Blockscout](https://img.shields.io/badge/Explorer-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
+<br>
+[![OpenGuild](https://img.shields.io/badge/OpenGuild-Hackathon%202025-E6007A?style=for-the-badge)](https://dorahacks.io/hackathon/polkadot-solidity-hackathon)
+<br>
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+<br>
 ![MicroBounty Homepage](image.png)
 
 *This project implements Idea #141 (Bounty Payment Platform) using Polkadot Hub's EVM-compatible smart contracts. While the original specification suggested Dedot/PAPI, we chose Solidity to leverage broader developer accessibility while still delivering all core features:* 
@@ -83,11 +88,11 @@ Supports MetaMask, SubWallet, Talisman, and any EIP-1193 wallet via Reown AppKit
 
 | Metric | Value |
 |---|---|
-| Total Value Transacted | $12,000+ |
-| Paid to Contributors | $1,900+ |
-| Bounties Posted | 20+ |
-| Completion Rate | 50% |
-| Cancellation Rate | 8% |
+| Total Value Transacted | $20,000+ |
+| Paid to Contributors | $4,000+ |
+| Bounties Posted | 30+ |
+| Completion Rate | 34% |
+| Cancellation Rate | 13% |
 
 ### Smart Contract (`/contract`)
 

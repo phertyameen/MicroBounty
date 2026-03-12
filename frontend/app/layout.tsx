@@ -4,7 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { WalletProvider } from "@/context/WalletContext";
 import { BountyProvider } from "@/context/BountyContext";
 import { Toaster } from "sonner";
-import "./globals.css";
+import "../styles/globals.css";
 import { AppKitProvider } from "@/context/appkit";
 import { ThemeProvider } from "@/components/theme-provider";
 
