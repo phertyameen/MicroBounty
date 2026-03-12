@@ -4,10 +4,17 @@
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-micro--bounty.vercel.app-brightgreen?style=for-the-badge)](https://micro-bounty.vercel.app/)
 [![Smart Contract](https://img.shields.io/badge/Contract-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
-[![OpenGuild Hackathon](https://img.shields.io/badge/OpenGuild-Hackathon%202025-E6007A?style=for-the-badge)](https://openguild.wtf)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+[![OpenGuild Hackathon](https://img.shields.io/badge/OpenGuild-Hackathon%202026-E6007A?style=for-the-badge)](https://dorahacks.io/hackathon/polkadot-solidity-hackathon)
+<!-- [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE) -->
 
 ![MicroBounty Homepage](image.png)
+
+*This project implements Idea #141 (Bounty Payment Platform) using Polkadot Hub's EVM-compatible smart contracts. While the original specification suggested Dedot/PAPI, we chose Solidity to leverage broader developer accessibility while still delivering all core features:* 
+
+- Multi-currency support, 
+- Transaction history, 
+- Analytics, and 
+- Seamless bounty workflows.
 
 ## What Is MicroBounty?
 
@@ -82,8 +89,6 @@ Supports MetaMask, SubWallet, Talisman, and any EIP-1193 wallet via Reown AppKit
 | Completion Rate | 50% |
 | Cancellation Rate | 8% |
 
-## Technical Architecture
-
 ### Smart Contract (`/contract`)
 
 - Solidity 0.8.28 · Hardhat · Polkadot Hub Testnet
@@ -101,6 +106,27 @@ Supports MetaMask, SubWallet, Talisman, and any EIP-1193 wallet via Reown AppKit
 - ethers.js v6 — correct 10-decimal DOT handling throughout
 - `BountyContext` — on-chain state, filtering, pagination
 - `WalletContext` — PAS + ERC20 balance fetching, wallet name detection
+
+## Quick Start
+
+### Try It Now
+1. Visit [micro-bounty.vercel.app](https://micro-bounty.vercel.app/)
+2. Connect wallet (MetaMask/SubWallet)
+3. Switch to Polkadot Hub Testnet
+4. Get testnet DOT from [faucet link]
+5. Create your first bounty!
+
+## Demo Video
+
+[![Watch Demo](https://cdn.loom.com/sessions/thumbnails/fe3baacd28764a30b28a66a7aeadc176-with-play.gif)](https://www.loom.com/share/fe3baacd28764a30b28a66a7aeadc176)
+
+*5-minute walkthrough of creating, submitting, and approving a bounty*
+
+## Documentation
+
+- **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) - Technical design and decisions
+- **Smart Contract**: [contract/README.md](contract/README.md) - Contract deployment and testing
+- **Frontend**: [frontend/README.md](frontend/README.md) - Frontend setup and development
 
 ## Roadmap
 

@@ -62,7 +62,7 @@ export default function CreateBountyPage() {
           <Card className="p-6">
             <h3 className="font-semibold mb-2">Be Specific</h3>
             <p className="text-sm text-muted-foreground">
-              Provide clear requirements and acceptance criteria so workers understand exactly what's needed.
+              Provide clear requirements and acceptance criteria so workers understand exactly what&apos;s needed.
             </p>
           </Card>
           <Card className="p-6">

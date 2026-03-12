@@ -643,7 +643,9 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
               newBountyId = parsed.args.bountyId.toString();
               break;
             }
-          } catch {}
+          } catch (_e) {
+            // intentionally ignored
+          }
         }
 
         // ✅ Patch the bountyId into the transaction record once we have it

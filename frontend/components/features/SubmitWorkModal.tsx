@@ -96,7 +96,7 @@ export function SubmitWorkModal({ open, onOpenChange, bounty }: SubmitWorkModalP
         <DialogHeader>
           <DialogTitle>Submit Work</DialogTitle>
           <DialogDescription>
-            Submit your proof of work for "{bounty.title}"
+            Submit your proof of work for &quot;{bounty.title}&quot;
           </DialogDescription>
         </DialogHeader>
 

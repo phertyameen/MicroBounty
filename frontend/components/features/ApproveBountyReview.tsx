@@ -74,7 +74,7 @@ export function ApproveBountyReview({ open, onOpenChange, bounty }: ApproveBount
         <DialogHeader>
           <DialogTitle>Review Submission</DialogTitle>
           <DialogDescription>
-            Review the submitted work for "{bounty.title}"
+            Review the submitted work for &quot;{bounty.title}&quot;
           </DialogDescription>
         </DialogHeader>
 

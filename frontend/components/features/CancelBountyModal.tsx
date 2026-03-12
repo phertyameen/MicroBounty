@@ -47,7 +47,7 @@ export function CancelBountyModal({
             <div>
               <AlertDialogTitle>Cancel Bounty?</AlertDialogTitle>
               <AlertDialogDescription className="mt-2">
-                Cancelling "{bounty.title}" will:
+                Cancelling &quot;{bounty.title}&quot; will:
                 <ul className="list-disc list-inside space-y-1 mt-2">
                   <li>Refund the full reward to your wallet on-chain</li>
                   <li>Permanently close the bounty to new submissions</li>
