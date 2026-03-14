@@ -3,14 +3,12 @@
 > **A decentralized bounty marketplace built natively on Polkadot Hub**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-micro--bounty.vercel.app-brightgreen?style=for-the-badge)](https://micro-bounty.vercel.app/)
-<br>
 [![Smart Contract](https://img.shields.io/badge/Contract-0x73fC...84AC5-gray?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
-<br>
 [![Blockscout](https://img.shields.io/badge/Explorer-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
 <br>
 [![OpenGuild](https://img.shields.io/badge/OpenGuild-Hackathon%202025-E6007A?style=for-the-badge)](https://dorahacks.io/hackathon/polkadot-solidity-hackathon)
-<br>
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+
 <br>
 ![MicroBounty Homepage](image.png)
 
