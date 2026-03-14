@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Bounty } from "@/lib/types";
 import { useBounty } from "@/context/BountyContext";
 import {
@@ -43,11 +42,11 @@ export function CancelBountyModal({
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <div>
               <AlertDialogTitle>Cancel Bounty?</AlertDialogTitle>
               <AlertDialogDescription className="mt-2">
-                Cancelling "{bounty.title}" will:
+                Cancelling &quot;{bounty.title}&quot; will:
                 <ul className="list-disc list-inside space-y-1 mt-2">
                   <li>Refund the full reward to your wallet on-chain</li>
                   <li>Permanently close the bounty to new submissions</li>

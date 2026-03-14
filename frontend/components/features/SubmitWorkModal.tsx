@@ -96,7 +96,7 @@ export function SubmitWorkModal({ open, onOpenChange, bounty }: SubmitWorkModalP
         <DialogHeader>
           <DialogTitle>Submit Work</DialogTitle>
           <DialogDescription>
-            Submit your proof of work for "{bounty.title}"
+            Submit your proof of work for &quot;{bounty.title}&quot;
           </DialogDescription>
         </DialogHeader>
 
@@ -145,7 +145,7 @@ export function SubmitWorkModal({ open, onOpenChange, bounty }: SubmitWorkModalP
           {/* Info / status card — swaps when pending */}
           {isPending ? (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex gap-3">
-              <Loader2 className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5 animate-spin" />
+              <Loader2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 animate-spin" />
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 {step === 'waiting-wallet'
                   ? 'Waiting for wallet confirmation…'
@@ -154,7 +154,7 @@ export function SubmitWorkModal({ open, onOpenChange, bounty }: SubmitWorkModalP
             </div>
           ) : (
             <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex gap-3">
-              <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 Your wallet will prompt you to sign this transaction. Once submitted,
                 the bounty moves to IN PROGRESS and only the creator can approve or

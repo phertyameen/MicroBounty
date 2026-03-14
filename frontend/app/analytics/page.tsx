@@ -20,25 +20,25 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Coins, Zap, Loader2 } from "lucide-react";
+import {
+  TrendingUp,
+  Coins,
+  Zap,
+  Loader2,
+  Check,
+  Copy,
+  Trophy,
+  TrophyIcon,
+} from "lucide-react";
 import { useBounty } from "@/context/BountyContext";
 import { ethers } from "ethers";
 import { CATEGORY_LABELS, Category } from "@/lib/types";
 import MicroBountyABI from "@/lib/abis/MicroBounty.json";
 import contractAddresses from "@/lib/abis/contract-addresses.json";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 const CONTRACT_ADDRESS = contractAddresses.MicroBounty;
-const DAYS_TO_SHOW = 8;
-const BLOCKS_PER_DAY = 14_400;
-const BLOCK_LOOKBACK = DAYS_TO_SHOW * BLOCKS_PER_DAY;
-
-// Use the same RPC the context uses — DO NOT use NETWORKS constant (different URL)
 const RPC_URL = "https://eth-rpc-testnet.polkadot.io/";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TrendPoint {
   date: string;
@@ -47,7 +47,15 @@ interface TrendPoint {
   cancelled: number;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface LeaderEntry {
+  address: string;
+  score: number;
+  bountiesCreated: number;
+  bountiesCompleted: number;
+  totalEarnedDOT: string;
+  totalSpentDOT: string;
+  role: "Creator" | "Hunter" | "Both";
+}
 
 function formatPAS(raw: string): string {
   try {
@@ -84,7 +92,77 @@ function buildDateRange(days: number): string[] {
   return result;
 }
 
-// ─── Event fetcher ────────────────────────────────────────────────────────────
+async function fetchLeaderboard(
+  bounties: Awaited<
+    ReturnType<typeof import("@/context/BountyContext").useBounty>
+  >["bounties"],
+): Promise<LeaderEntry[]> {
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const contract = new ethers.Contract(
+    CONTRACT_ADDRESS,
+    MicroBountyABI.abi,
+    provider,
+  );
+
+  // Collect every unique address that has touched the platform
+  const addresses = new Set<string>();
+  for (const b of bounties) {
+    if (b.creator) addresses.add(b.creator.toLowerCase());
+    if (b.hunter && b.hunter !== ethers.ZeroAddress)
+      addresses.add(b.hunter.toLowerCase());
+  }
+
+  if (addresses.size === 0) return [];
+
+  // Fetch getUserStats for each address in parallel
+  const entries = await Promise.all(
+    [...addresses].map(async (addr): Promise<LeaderEntry | null> => {
+      try {
+        const s = await contract.getUserStats(addr);
+        const created = Number(s.bountiesCreated);
+        const completed = Number(s.bountiesCompleted);
+        const earnedDOT = s.totalEarnedDOT.toString();
+        const spentDOT = s.totalSpentDOT.toString();
+
+        // Scoring formula:
+        //   +3 per bounty completed (hunter activity — hardest to fake)
+        //   +1 per bounty created   (creator activity)
+        //   +1 per 1000 PAS earned  (hunter earnings weight)
+        //   +0.5 per 1000 PAS spent (creator spend weight)
+        const earnedPAS = parseFloat(ethers.formatUnits(earnedDOT, 10));
+        const spentPAS = parseFloat(ethers.formatUnits(spentDOT, 10));
+        const score =
+          completed * 3 + created * 1 + earnedPAS / 1000 + spentPAS / 2000;
+
+        if (score === 0) return null;
+
+        const role: LeaderEntry["role"] =
+          created > 0 && completed > 0
+            ? "Both"
+            : completed > 0
+              ? "Hunter"
+              : "Creator";
+
+        return {
+          address: addr,
+          score,
+          bountiesCreated: created,
+          bountiesCompleted: completed,
+          totalEarnedDOT: earnedDOT,
+          totalSpentDOT: spentDOT,
+          role,
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return entries
+    .filter((e): e is LeaderEntry => e !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+}
 
 async function fetchTrendFromEvents(): Promise<TrendPoint[]> {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -94,16 +172,62 @@ async function fetchTrendFromEvents(): Promise<TrendPoint[]> {
     provider,
   );
 
-  // Get current block so we can provide a fromBlock to avoid RPC range limits
   const latestBlock = await provider.getBlockNumber();
-  // ~14 days of blocks: Polkadot Hub testnet ~6s block time = ~10 blocks/min = ~201,600 blocks/14days
-  const fromBlock = Math.max(0, latestBlock - BLOCK_LOOKBACK);
 
+  // Find the contract's deploy block by querying from block 0.
+  // The very first BountyCreated event tells us the earliest meaningful activity,
+  // but the deploy block itself is more accurate — fetch it via the contract's
+  // creation transaction if available, otherwise fall back to block 0.
+  let deployTimestampMs: number;
+  let fromBlock = 0;
+
+  try {
+    // Query all BountyCreated events from genesis to find the oldest one
+    const allCreated = await contract.queryFilter(
+      contract.filters.BountyCreated(),
+      0,
+      latestBlock,
+    );
+
+    if (allCreated.length > 0) {
+      // Sort ascending and use the first event's block as the origin
+      const firstBlock = allCreated
+        .map((l) => l.blockNumber)
+        .sort((a, b) => a - b)[0];
+
+      const deployBlock = await provider.getBlock(firstBlock);
+      deployTimestampMs = deployBlock
+        ? deployBlock.timestamp * 1000
+        : Date.now();
+      fromBlock = firstBlock;
+    } else {
+      // No events yet — fall back to a reasonable default (contract likely just deployed)
+      const latest = await provider.getBlock(latestBlock);
+      deployTimestampMs = latest ? latest.timestamp * 1000 : Date.now();
+      fromBlock = latestBlock;
+    }
+  } catch {
+    console.warn(
+      "[Analytics] Could not resolve deploy block, falling back to latest",
+    );
+    deployTimestampMs = Date.now();
+    fromBlock = latestBlock;
+  }
+
+  // Calculate how many days have passed since contract origin
+  const msPerDay = 86_400_000;
+  const daysElapsed = Math.max(
+    1,
+    Math.ceil((Date.now() - deployTimestampMs) / msPerDay) + 1,
+  );
+
+  console.log(
+    `[Analytics] Contract origin: ${new Date(deployTimestampMs).toISOString()}, showing ${daysElapsed} days`,
+  );
   console.log(
     `[Analytics] Querying events from block ${fromBlock} to ${latestBlock}`,
   );
 
-  // ABI-confirmed event names: BountyCreated, BountyCompleted, BountyCancelled
   const [createdLogs, completedLogs, cancelledLogs] = await Promise.all([
     contract.queryFilter(
       contract.filters.BountyCreated(),
@@ -123,14 +247,13 @@ async function fetchTrendFromEvents(): Promise<TrendPoint[]> {
   ]);
 
   console.log(
-    `[Analytics] Events found — created: ${createdLogs.length}, completed: ${completedLogs.length}, cancelled: ${cancelledLogs.length}`,
+    `[Analytics] Events — created: ${createdLogs.length}, completed: ${completedLogs.length}, cancelled: ${cancelledLogs.length}`,
   );
 
-  // Collect unique block numbers across all logs to minimise getBlock() calls
+  // Resolve unique block timestamps
   const allLogs = [...createdLogs, ...completedLogs, ...cancelledLogs];
   const uniqueBlocks = [...new Set(allLogs.map((l) => l.blockNumber))];
 
-  // Resolve block timestamps in parallel
   const blockTimestamps: Record<number, number> = {};
   await Promise.all(
     uniqueBlocks.map(async (blockNum) => {
@@ -138,14 +261,13 @@ async function fetchTrendFromEvents(): Promise<TrendPoint[]> {
         const block = await provider.getBlock(blockNum);
         if (block) blockTimestamps[blockNum] = block.timestamp * 1000;
       } catch {
-        // If a single block fetch fails, skip it — don't abort the whole chart
         console.warn(`[Analytics] Could not fetch block ${blockNum}`);
       }
     }),
   );
 
-  // Initialise day buckets
-  const dateRange = buildDateRange(DAYS_TO_SHOW);
+  // Build date buckets from deploy day to today
+  const dateRange = buildDateRange(daysElapsed);
   const counts: Record<string, TrendPoint> = {};
   for (const key of dateRange) {
     counts[key] = {
@@ -175,15 +297,11 @@ async function fetchTrendFromEvents(): Promise<TrendPoint[]> {
   return dateRange.map((key) => counts[key]);
 }
 
-// ─── Tooltip style ────────────────────────────────────────────────────────────
-
 const tooltipStyle = {
   backgroundColor: "hsl(var(--background))",
   border: "1px solid hsl(var(--border))",
   borderRadius: "8px",
 };
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
   const { fetchPlatformStats, fetchBounties, platformStats, bounties } =
@@ -193,6 +311,25 @@ export default function AnalyticsPage() {
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [trendLoading, setTrendLoading] = useState(true);
   const [trendError, setTrendError] = useState<string | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [leaderLoading, setLeaderLoading] = useState(true);
+
+  // Run after bounties are loaded so we have addresses to score
+  useEffect(() => {
+    if (statsLoading) return;
+    const load = async () => {
+      setLeaderLoading(true);
+      try {
+        const data = await fetchLeaderboard(bounties);
+        setLeaderboard(data);
+      } catch (err) {
+        console.error("[Analytics] fetchLeaderboard failed:", err);
+      } finally {
+        setLeaderLoading(false);
+      }
+    };
+    load();
+  }, [bounties, statsLoading]);
 
   useEffect(() => {
     const load = async () => {
@@ -220,8 +357,6 @@ export default function AnalyticsPage() {
     };
     load();
   }, []);
-
-  // ── Derived data ──────────────────────────────────────────────────────────
 
   const categoryData = Object.values(Category)
     .filter((v): v is Category => typeof v === "number")
@@ -263,14 +398,22 @@ export default function AnalyticsPage() {
     (p) => p.created > 0 || p.completed > 0 || p.cancelled > 0,
   );
 
-  const formatStable = (raw: string) =>
-    parseFloat(ethers.formatUnits(raw, 6)).toFixed(2);
+  const formatStable = (raw: string) => {
+    try {
+      const n = parseFloat(ethers.formatUnits(raw, 6));
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+      if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+      return n.toFixed(2);
+    } catch {
+      return "—";
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
 
-      <section className="border-b border-border bg-gradient-to-br from-background via-background to-accent/5">
+      <section className="border-b border-border bg-linear-to-br from-background via-background to-accent/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h1 className="text-4xl font-bold mb-2">Platform Analytics</h1>
           <p className="text-lg text-muted-foreground">
@@ -281,7 +424,7 @@ export default function AnalyticsPage() {
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
           <MetricCard
             label="Total Bounties"
             value={
@@ -296,21 +439,6 @@ export default function AnalyticsPage() {
                 ? null
                 : platformStats
                   ? `${platformStats.activeBounties} active`
-                  : "—"
-            }
-          />
-          <MetricCard
-            label="Total Value (PAS)"
-            value={statsLoading ? null : formatPAS(totalValueRaw)}
-            icon={
-              <Coins className="w-6 h-6 text-green-600 dark:text-green-400" />
-            }
-            iconBg="bg-green-100 dark:bg-green-900"
-            sub={
-              statsLoading
-                ? null
-                : platformStats
-                  ? `${formatPAS(platformStats.totalPaidOutDOT)} paid out`
                   : "—"
             }
           />
@@ -422,7 +550,7 @@ export default function AnalyticsPage() {
             {statsLoading ? (
               <ChartLoader />
             ) : categoryData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+              <div className="h-75 flex items-center justify-center text-sm text-muted-foreground">
                 No bounties yet
               </div>
             ) : (
@@ -496,7 +624,7 @@ export default function AnalyticsPage() {
               </Badge>
             ) : (
               <Badge variant="outline" className="text-xs">
-                Last {DAYS_TO_SHOW} days · On-chain events
+                Since contract deployment · On-chain events
               </Badge>
             )}
           </div>
@@ -511,7 +639,7 @@ export default function AnalyticsPage() {
           {trendLoading ? (
             <ChartLoader height={300} />
           ) : trendError ? (
-            <div className="h-[300px] flex flex-col items-center justify-center gap-2">
+            <div className="h-75 flex flex-col items-center justify-center gap-2">
               <p className="text-sm text-destructive font-medium">
                 Failed to load event data
               </p>
@@ -520,8 +648,8 @@ export default function AnalyticsPage() {
               </p>
             </div>
           ) : !trendHasData ? (
-            <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-              No activity found in the last {DAYS_TO_SHOW} days.
+            <div className="h-75 flex items-center justify-center text-sm text-muted-foreground">
+              No activity found since contract deployment.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -636,14 +764,53 @@ export default function AnalyticsPage() {
             )}
           </Card>
         </div>
+        {/* Leaderboard */}
+        <Card className="p-6 mt-6 overflow-hidden relative">
+          {/* Subtle background accent */}
+          <div className="absolute inset-0 bg-linear-to-br from-yellow-500/5 via-transparent to-transparent pointer-events-none" />
+
+          <div className="flex items-center justify-between mb-6 relative">
+            <div className="flex items-center gap-2">
+              <TrophyIcon className="w-5 h-5 text-yellow-500" />
+              <h2 className="font-semibold">Top Contributors</h2>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              All time · Activity score
+            </Badge>
+          </div>
+
+          {leaderLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-muted animate-pulse rounded-lg"
+                />
+              ))}
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+              No activity recorded yet
+            </div>
+          ) : (
+            <div className="space-y-3 relative">
+              {leaderboard.map((entry, i) => (
+                <LeaderboardRow
+                  key={entry.address}
+                  entry={entry}
+                  rank={i + 1}
+                  topScore={leaderboard[0].score}
+                />
+              ))}
+            </div>
+          )}
+        </Card>
       </main>
 
       <Footer />
     </div>
   );
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ChartLoader({ height = 300 }: { height?: number }) {
   return (
@@ -694,4 +861,156 @@ function MetricCard({
 
 function StatSkeleton() {
   return <div className="h-9 w-24 bg-muted animate-pulse rounded mt-1" />;
+}
+
+const RANK_CONFIG = [
+  {
+    medal: "🥇",
+    bar: "bg-yellow-400",
+    glow: "shadow-yellow-400/30",
+    label: "text-yellow-600 dark:text-yellow-400",
+    border: "border-yellow-300/40 dark:border-yellow-500/30",
+  },
+  {
+    medal: "🥈",
+    bar: "bg-slate-400",
+    glow: "shadow-slate-400/20",
+    label: "text-slate-500  dark:text-slate-400",
+    border: "border-slate-300/40  dark:border-slate-500/30",
+  },
+  {
+    medal: "🥉",
+    bar: "bg-amber-600",
+    glow: "shadow-amber-600/20",
+    label: "text-amber-700  dark:text-amber-500",
+    border: "border-amber-300/40  dark:border-amber-600/30",
+  },
+  {
+    medal: "4",
+    bar: "bg-sky-400",
+    glow: "shadow-sky-400/20",
+    label: "text-sky-600    dark:text-sky-400",
+    border: "border-sky-300/40    dark:border-sky-500/30",
+  },
+  {
+    medal: "5",
+    bar: "bg-indigo-400",
+    glow: "shadow-indigo-400/20",
+    label: "text-indigo-600 dark:text-indigo-400",
+    border: "border-indigo-300/40 dark:border-indigo-500/30",
+  },
+];
+
+const ROLE_COLORS: Record<LeaderEntry["role"], string> = {
+  Both: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  Hunter:
+    "bg-blue-100   text-blue-700   dark:bg-blue-900/40   dark:text-blue-300",
+  Creator:
+    "bg-green-100  text-green-700  dark:bg-green-900/40  dark:text-green-300",
+};
+
+function LeaderboardRow({
+  entry,
+  rank,
+  topScore,
+}: {
+  entry: LeaderEntry;
+  rank: number;
+  topScore: number;
+}) {
+  const [copied, setCopied] = useState(false);
+  const cfg = RANK_CONFIG[rank - 1];
+  const pct = topScore > 0 ? Math.round((entry.score / topScore) * 100) : 0;
+  const short = `${entry.address.slice(0, 6)}…${entry.address.slice(-4)}`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(entry.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const earnedPAS = parseFloat(
+    ethers.formatUnits(entry.totalEarnedDOT, 10),
+  ).toFixed(1);
+  const spentPAS = parseFloat(
+    ethers.formatUnits(entry.totalSpentDOT, 10),
+  ).toFixed(1);
+
+  return (
+    <div
+      className={`group relative flex items-center gap-4 rounded-xl border px-4 py-3 transition-all duration-200 hover:shadow-md ${cfg.border} ${cfg.glow} bg-card`}
+    >
+      {/* Rank medal */}
+      <span className="text-2xl w-8 text-center select-none shrink-0">
+        {cfg.medal}
+      </span>
+
+      {/* Address + copy */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1.5">
+          <button
+            onClick={copy}
+            className="flex items-center gap-1.5 group/copy"
+            title="Copy full address"
+          >
+            <span className={`font-mono text-sm font-semibold ${cfg.label}`}>
+              {short}
+            </span>
+            <span className="opacity-0 group-hover/copy:opacity-100 transition-opacity">
+              {copied ? (
+                <Check className="w-3 h-3 text-green-500" />
+              ) : (
+                <Copy className="w-3 h-3 text-muted-foreground" />
+              )}
+            </span>
+          </button>
+          <span
+            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ROLE_COLORS[entry.role]}`}
+          >
+            {entry.role}
+          </span>
+        </div>
+
+        {/* Score bar */}
+        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${cfg.bar}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Stats cluster */}
+      <div className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+        <div className="text-center">
+          <p className="font-semibold text-foreground">
+            {entry.bountiesCreated}
+          </p>
+          <p>created</p>
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-foreground">
+            {entry.bountiesCompleted}
+          </p>
+          <p>completed</p>
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-foreground">{earnedPAS}</p>
+          <p>earned PAS</p>
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-foreground">{spentPAS}</p>
+          <p>spent PAS</p>
+        </div>
+      </div>
+
+      {/* Score badge — far right */}
+      <div className={`text-right shrink-0`}>
+        <p className={`text-lg font-bold tabular-nums ${cfg.label}`}>
+          {Math.round(entry.score)}
+        </p>
+        <p className="text-[10px] text-muted-foreground">score</p>
+      </div>
+    </div>
+  );
 }

@@ -95,7 +95,7 @@ export default function Home() {
       <Navbar />
 
       {/* Hero */}
-      <section className="border-b border-border bg-gradient-to-br from-background via-background to-accent/5">
+      <section className="border-b border-border bg-linear-to-br from-background via-background to-accent/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div className="flex-1">
@@ -125,7 +125,7 @@ export default function Home() {
             </div>
 
             {/* Live stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 w-full md:w-auto">
               {stats.map((s) => (
                 <div
                   key={s.label}
@@ -204,29 +204,65 @@ export default function Home() {
                   variant="outline"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
+                  className="gap-1"
                 >
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">←</span>
                 </Button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (p) => (
-                    <Button
-                      key={p}
-                      variant={p === page ? "default" : "outline"}
-                      onClick={() => setPage(p)}
-                      className="w-9"
-                    >
-                      {p}
-                    </Button>
-                  ),
-                )}
+                {(() => {
+                  const pages: (number | "ellipsis")[] = [];
 
+                  if (totalPages <= 5) {
+                    // Show all if few pages
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    if (page > 3) pages.push("ellipsis");
+
+                    // Pages around current
+                    for (
+                      let i = Math.max(2, page - 1);
+                      i <= Math.min(totalPages - 1, page + 1);
+                      i++
+                    ) {
+                      pages.push(i);
+                    }
+
+                    if (page < totalPages - 2) pages.push("ellipsis");
+                    pages.push(totalPages);
+                  }
+
+                  return pages.map((p, i) =>
+                    p === "ellipsis" ? (
+                      <span
+                        key={`ellipsis-${i}`}
+                        className="px-1 text-muted-foreground"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <Button
+                        key={p}
+                        variant={p === page ? "default" : "outline"}
+                        onClick={() => setPage(p)}
+                        className="w-9"
+                      >
+                        {p}
+                      </Button>
+                    ),
+                  );
+                })()}
+
+                {/* Next */}
                 <Button
                   variant="outline"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
+                  className="gap-1"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">→</span>
                 </Button>
               </div>
             )}

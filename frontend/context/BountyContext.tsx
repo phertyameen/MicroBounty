@@ -121,16 +121,6 @@ function statusToIndex(status: BountyStatus): BountyStatusIndex {
   }[status];
 }
 
-/** Map BountyStatusIndex → BountyStatus string. */
-function indexToStatus(index: BountyStatusIndex): BountyStatus {
-  return {
-    [BountyStatusIndex.OPEN]: BountyStatus.OPEN,
-    [BountyStatusIndex.IN_PROGRESS]: BountyStatus.IN_PROGRESS,
-    [BountyStatusIndex.COMPLETED]: BountyStatus.COMPLETED,
-    [BountyStatusIndex.CANCELLED]: BountyStatus.CANCELLED,
-  }[index];
-}
-
 //  Utility: wait for RPC state to propagate after a tx is mined
 //
 //  Polkadot Hub testnet (and many EVM-compatible nodes) have a
@@ -643,7 +633,9 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
               newBountyId = parsed.args.bountyId.toString();
               break;
             }
-          } catch {}
+          } catch (_e) {
+            // intentionally ignored
+          }
         }
 
         // ✅ Patch the bountyId into the transaction record once we have it
@@ -663,7 +655,6 @@ export function BountyProvider({ children }: { children: React.ReactNode }) {
           err instanceof Error ? err.message : "Failed to create bounty",
         );
         throw err
-        return null;
       } finally {
         setIsWritePending(false);
       }

@@ -66,6 +66,40 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
   const isERC20 = formData.tokenAddress !== DOT_ADDRESS;
   const isPending = txStep === "approving" || txStep === "creating";
 
+  const validateBalance = async (rawReward: string): Promise<boolean> => {
+    if (!signer) return true;
+
+    try {
+      const address = await signer.getAddress();
+
+      if (isERC20) {
+        const tokenContract = new ethers.Contract(
+          formData.tokenAddress,
+          ["function balanceOf(address) view returns (uint256)"],
+          signer,
+        );
+        const balance: bigint = await tokenContract.balanceOf(address);
+        if (balance < BigInt(rawReward)) {
+          toast.error(`Not enough ${selectedToken.symbol} balance.`, {
+            description: `You need at least ${formData.rewardHuman} ${selectedToken.symbol}.`,
+          });
+          return false;
+        }
+      } else {
+        const balance = await signer.provider?.getBalance(address);
+        if (balance !== undefined && balance < BigInt(rawReward)) {
+          toast.error(`Not enough ${selectedToken.symbol} balance.`, {
+            description: `You need at least ${formData.rewardHuman} ${selectedToken.symbol}.`,
+          });
+          return false;
+        }
+      }
+      return true;
+    } catch {
+      return true; // let the contract handle it if check fails
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
@@ -204,6 +238,9 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
     }
 
     try {
+      const hasBalance = await validateBalance(rawReward);
+      if (!hasBalance) return;
+
       // Step 1 (ERC20 only): approval
       if (isERC20) {
         const approved = await ensureERC20Approval(rawReward);
@@ -591,7 +628,7 @@ export function CreateBountyForm({ onSuccess }: CreateBountyFormProps) {
           <Button
             type="submit"
             disabled={isPending || isWritePending}
-            className="gap-2 min-w-[140px]"
+            className="gap-2 min-w-35"
           >
             {isPending || isWritePending ? (
               <>

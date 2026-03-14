@@ -21,7 +21,7 @@ module.exports = {
     polkadotTestnet: {
       url: "https://eth-rpc-testnet.polkadot.io/",
       chainId: 420420417,
-      accounts: [private_key],
+      accounts: private_key ? [private_key] : [],
     },
     local: {
       url: "http://127.0.0.1:8545",

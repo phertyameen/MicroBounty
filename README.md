@@ -3,11 +3,21 @@
 > **A decentralized bounty marketplace built natively on Polkadot Hub**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-micro--bounty.vercel.app-brightgreen?style=for-the-badge)](https://micro-bounty.vercel.app/)
-[![Smart Contract](https://img.shields.io/badge/Contract-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
-[![OpenGuild Hackathon](https://img.shields.io/badge/OpenGuild-Hackathon%202025-E6007A?style=for-the-badge)](https://openguild.wtf)
+[![Smart Contract](https://img.shields.io/badge/Contract-0x73fC...84AC5-gray?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
+[![Blockscout](https://img.shields.io/badge/Explorer-Blockscout-blue?style=for-the-badge)](https://blockscout-testnet.polkadot.io/address/0x73fC6177262D64ca26A76ECbab8c1aeD97e84AC5?tab=index)
+<br>
+[![OpenGuild](https://img.shields.io/badge/OpenGuild-Hackathon%202025-E6007A?style=for-the-badge)](https://dorahacks.io/hackathon/polkadot-solidity-hackathon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
+<br>
 ![MicroBounty Homepage](image.png)
+
+*This project implements Idea #141 (Bounty Payment Platform) using Polkadot Hub's EVM-compatible smart contracts. While the original specification suggested Dedot/PAPI, we chose Solidity to leverage broader developer accessibility while still delivering all core features:* 
+
+- Multi-currency support, 
+- Transaction history, 
+- Analytics, and 
+- Seamless bounty workflows.
 
 ## What Is MicroBounty?
 
@@ -76,13 +86,11 @@ Supports MetaMask, SubWallet, Talisman, and any EIP-1193 wallet via Reown AppKit
 
 | Metric | Value |
 |---|---|
-| Total Value Transacted | $12,000+ |
-| Paid to Contributors | $1,900+ |
-| Bounties Posted | 20+ |
-| Completion Rate | 50% |
-| Cancellation Rate | 8% |
-
-## Technical Architecture
+| Total Value Transacted | $20,000+ |
+| Paid to Contributors | $4,000+ |
+| Bounties Posted | 30+ |
+| Completion Rate | 34% |
+| Cancellation Rate | 13% |
 
 ### Smart Contract (`/contract`)
 
@@ -101,6 +109,27 @@ Supports MetaMask, SubWallet, Talisman, and any EIP-1193 wallet via Reown AppKit
 - ethers.js v6 — correct 10-decimal DOT handling throughout
 - `BountyContext` — on-chain state, filtering, pagination
 - `WalletContext` — PAS + ERC20 balance fetching, wallet name detection
+
+## Quick Start
+
+### Try It Now
+1. Visit [micro-bounty.vercel.app](https://micro-bounty.vercel.app/)
+2. Connect wallet (MetaMask/SubWallet)
+3. Switch to Polkadot Hub Testnet
+4. Get testnet DOT from [faucet link]
+5. Create your first bounty!
+
+## Demo Video
+
+[![Watch Demo](https://cdn.loom.com/sessions/thumbnails/fe3baacd28764a30b28a66a7aeadc176-with-play.gif)](https://www.loom.com/share/fe3baacd28764a30b28a66a7aeadc176)
+
+*5-minute walkthrough of creating, submitting, and approving a bounty*
+
+## Documentation
+
+- **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) - Technical design and decisions
+- **Smart Contract**: [contract/README.md](contract/README.md) - Contract deployment and testing
+- **Frontend**: [frontend/README.md](frontend/README.md) - Frontend setup and development
 
 ## Roadmap
 
