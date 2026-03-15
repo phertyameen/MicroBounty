@@ -1,76 +1,105 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
-import { useBounty, DOT_ADDRESS, CATEGORY_LABELS } from '@/context/BountyContext'
-import { useWallet } from '@/context/WalletContext'
-import { BountyStatusIndex } from '@/lib/types'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDistance, format } from 'date-fns'
-import { Clock, DollarSign, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
-import { ethers } from 'ethers'
-import { SubmitWorkModal } from '@/components/features/SubmitWorkModal'
-import { ApproveBountyReview } from '@/components/features/ApproveBountyReview'
-import { CancelBountyModal } from '@/components/features/CancelBountyModal'
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import {
+  useBounty,
+  DOT_ADDRESS,
+  CATEGORY_LABELS,
+} from "@/context/BountyContext";
+import { useWallet } from "@/context/WalletContext";
+import { BountyStatusIndex } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatDistance, format } from "date-fns";
+import {
+  Clock,
+  DollarSign,
+  CheckCircle,
+  AlertCircle,
+  ExternalLink,
+} from "lucide-react";
+import Link from "next/link";
+import { ethers } from "ethers";
+import { SubmitWorkModal } from "@/components/features/SubmitWorkModal";
+import { ApproveBountyReview } from "@/components/features/ApproveBountyReview";
+import { CancelBountyModal } from "@/components/features/CancelBountyModal";
 
 // Maps BountyStatusIndex → display string + colour
-const STATUS_META: Record<number, { label: string; className: string }> = {
+const STATUS_META: Record<
+  number,
+  { label: string; className: string; pulse: boolean }
+> = {
   [BountyStatusIndex.OPEN]: {
-    label: 'Open',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+    label: "Open",
+    className:
+      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+    pulse: true,
   },
   [BountyStatusIndex.IN_PROGRESS]: {
-    label: 'In Progress',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+    label: "In Progress",
+    className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+    pulse: false,
   },
   [BountyStatusIndex.COMPLETED]: {
-    label: 'Completed',
-    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
+    label: "Completed",
+    className:
+      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
+    pulse: false,
   },
   [BountyStatusIndex.CANCELLED]: {
-    label: 'Cancelled',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
+    label: "Cancelled",
+    className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+    pulse: false,
   },
-}
+};
 
 /** Format a raw reward bigint string using the token's decimals */
 function formatReward(raw: string, decimals: number): string {
   try {
-    return parseFloat(ethers.formatUnits(raw, decimals)).toLocaleString(undefined, {
-      maximumFractionDigits: 4,
-    })
+    return parseFloat(ethers.formatUnits(raw, decimals)).toLocaleString(
+      undefined,
+      {
+        maximumFractionDigits: 4,
+      },
+    );
   } catch {
-    return raw
+    return raw;
   }
 }
 
 /** Shorten an address for display */
 function shortAddr(addr: string) {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 export default function BountyDetail() {
-  const params = useParams()
-  const bountyId = params.id as string
+  const params = useParams();
+  const bountyId = params.id as string;
 
-  const { selectedBounty, fetchBountyById, isLoading, error, submitWork, approveBounty, cancelBounty } = useBounty()
-  const { connected, address } = useWallet()
+  const isUserRejection = (err: string) =>
+    err.toLowerCase().includes("user rejected") ||
+    err.includes("4001") ||
+    err.includes("ACTION_REJECTED");
 
-  const [showSubmitModal, setShowSubmitModal] = useState(false)
-  const [showApproveModal, setShowApproveModal] = useState(false)
-  const [showCancelModal, setShowCancelModal] = useState(false)
+  const { selectedBounty, fetchBountyById, isLoading, error, clearError } = useBounty();
+  const { connected, address } = useWallet();
 
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const router = useRouter()
+  
   useEffect(() => {
-    if (bountyId) fetchBountyById(bountyId)
-  }, [bountyId, fetchBountyById])
+    if (bountyId) fetchBountyById(bountyId);
+  }, [bountyId, fetchBountyById]);
 
-  // ── Loading ────────────────────────────────────────────────
+  // Loading
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -83,54 +112,79 @@ export default function BountyDetail() {
         </div>
         <Footer />
       </div>
-    )
+    );
   }
 
-  // ── Error / not found ──────────────────────────────────────
+  // Error not found
   if (error || !selectedBounty) {
+    const userCancelled = error && isUserRejection(error);
+
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Bounty Not Found</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              {" "}
+              {userCancelled ? "Transaction Cancelled" : "Bounty Not Found"}
+            </h1>
             <p className="text-muted-foreground mb-6">
-              {error ?? "This bounty doesn't exist or has been removed."}
+              {userCancelled
+                ? "You cancelled the transaction in your wallet. Your work has not been submitted."
+                : "This bounty doesn't exist or has been removed."}
             </p>
-            <Link href="/">
-              <Button>Back to Browse</Button>
-            </Link>
+            {userCancelled ? (
+              <Button
+                onClick={() => {
+                  clearError();
+                  router.refresh()
+                }}
+              >
+                Try Again
+              </Button>
+            ) : (
+              <Link href="/">
+                <Button>Back to Browse</Button>
+              </Link>
+            )}
           </div>
         </div>
         <Footer />
       </div>
-    )
+    );
   }
 
-  // ── Derived state ──────────────────────────────────────────
-  const bounty = selectedBounty
-  const statusMeta = STATUS_META[bounty.status] ?? STATUS_META[BountyStatusIndex.OPEN]
-  const isNative = bounty.paymentToken === DOT_ADDRESS
+  // Derived state
+  const bounty = selectedBounty;
+  const statusMeta =
+    STATUS_META[bounty.status] ?? STATUS_META[BountyStatusIndex.OPEN];
+  const isNative = bounty.paymentToken === DOT_ADDRESS;
 
-  const isCreator = address?.toLowerCase() === bounty.creator.toLowerCase()
-  const isHunter  = address?.toLowerCase() === bounty.hunter.toLowerCase()
+  const isCreator = address?.toLowerCase() === bounty.creator.toLowerCase();
 
   // Match contract logic exactly:
   // submitWork: status === OPEN and not creator
-  const canSubmit  = connected && !isCreator && bounty.status === BountyStatusIndex.OPEN
+  const canSubmit =
+    connected && !isCreator && bounty.status === BountyStatusIndex.OPEN;
   // approveBounty: creator + IN_PROGRESS
-  const canApprove = connected && isCreator && bounty.status === BountyStatusIndex.IN_PROGRESS
+  const canApprove =
+    connected && isCreator && bounty.status === BountyStatusIndex.IN_PROGRESS;
   // cancelBounty: creator + OPEN only (contract reverts on anything else)
-  const canCancel  = connected && isCreator && bounty.status === BountyStatusIndex.OPEN
+  const canCancel =
+    connected && isCreator && bounty.status === BountyStatusIndex.OPEN;
 
-  const createdDate   = new Date(bounty.createdAt * 1000)   // contract stores unix seconds
-  const submittedDate = bounty.submittedAt ? new Date(bounty.submittedAt * 1000) : null
-  const completedDate = bounty.completedAt ? new Date(bounty.completedAt * 1000) : null
+  const createdDate = new Date(bounty.createdAt * 1000); // contract stores unix seconds
+  const submittedDate = bounty.submittedAt
+    ? new Date(bounty.submittedAt * 1000)
+    : null;
+  const completedDate = bounty.completedAt
+    ? new Date(bounty.completedAt * 1000)
+    : null;
 
-  const categoryLabel = CATEGORY_LABELS[bounty.category] ?? 'Other'
-  const formattedReward = formatReward(bounty.reward, bounty.token.decimals)
-  const explorerBase = 'https://blockscout-testnet.polkadot.io'
+  const categoryLabel = CATEGORY_LABELS[bounty.category] ?? "Other";
+  const formattedReward = formatReward(bounty.reward, bounty.token.decimals);
+  const explorerBase = "https://blockscout-testnet.polkadot.io";
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -140,9 +194,13 @@ export default function BountyDetail() {
       <div className="border-b border-border bg-muted/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <nav className="flex items-center gap-2 text-sm">
-            <Link href="/" className="text-primary hover:underline">Browse</Link>
+            <Link href="/" className="text-primary hover:underline">
+              Browse
+            </Link>
             <span className="text-muted-foreground">/</span>
-            <span className="text-muted-foreground truncate">{bounty.title}</span>
+            <span className="text-muted-foreground truncate">
+              {bounty.title}
+            </span>
           </nav>
         </div>
       </div>
@@ -150,29 +208,37 @@ export default function BountyDetail() {
       {/* Main */}
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* ── Left column ─────────────────────────────────── */}
+          {/*Left column*/}
           <div className="lg:col-span-2 space-y-6">
-
             {/* Header */}
             <div>
               <div className="flex items-start justify-between gap-4 mb-3">
                 <h1 className="text-3xl font-bold">{bounty.title}</h1>
-                <Badge className={statusMeta.className}>{statusMeta.label}</Badge>
+                <Badge
+                  className={`${statusMeta.className} flex items-center gap-1.5`}
+                >
+                  {statusMeta.pulse && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                    </span>
+                  )}
+                  {statusMeta.label}
+                </Badge>
               </div>
               <p className="text-muted-foreground text-sm">
-                Created by{' '}
+                Created by{" "}
                 <a
                   href={`${explorerBase}/address/${bounty.creator}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline inline-flex items-center gap-1"
+                  className="text-primary hover:underline inline-flex items-center gap-1 group"
                 >
                   {shortAddr(bounty.creator)}
-                  <ExternalLink className="w-3 h-3" />
+                  <ExternalLink className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </a>
-                {' · '}
-                <span title={format(createdDate, 'PPpp')}>
+                {" · "}
+                <span title={format(createdDate, "PPpp")}>
                   {formatDistance(createdDate, new Date(), { addSuffix: true })}
                 </span>
               </p>
@@ -181,7 +247,9 @@ export default function BountyDetail() {
             {/* Description */}
             <Card className="p-6">
               <h2 className="font-semibold mb-3">About this bounty</h2>
-              <p className="text-muted-foreground whitespace-pre-wrap">{bounty.description}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {bounty.description}
+              </p>
             </Card>
 
             {/* Tabs */}
@@ -195,60 +263,68 @@ export default function BountyDetail() {
               <TabsContent value="submission" className="space-y-4">
                 {bounty.status === BountyStatusIndex.OPEN && (
                   <div className="text-center py-8 bg-muted/50 rounded-lg">
-                    <p className="text-muted-foreground">No submissions yet — be the first!</p>
+                    <p className="text-muted-foreground">
+                      No submissions yet — be the first!
+                    </p>
                   </div>
                 )}
 
-                {bounty.status !== BountyStatusIndex.OPEN && bounty.hunter !== ethers.ZeroAddress && (
-                  <Card className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          Hunter:{' '}
+                {bounty.status !== BountyStatusIndex.OPEN &&
+                  bounty.hunter !== ethers.ZeroAddress && (
+                    <Card className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            Hunter:{" "}
+                            <a
+                              href={`${explorerBase}/address/${bounty.hunter}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline inline-flex items-center gap-1 group"
+                            >
+                              {shortAddr(bounty.hunter)}
+                              <ExternalLink className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            </a>
+                          </div>
+                          {submittedDate && (
+                            <p className="text-sm text-muted-foreground">
+                              Submitted{" "}
+                              {formatDistance(submittedDate, new Date(), {
+                                addSuffix: true,
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="outline">{statusMeta.label}</Badge>
+                      </div>
+
+                      {bounty.proofUrl && (
+                        <div>
+                          <span className="text-sm font-medium">Proof: </span>
                           <a
-                            href={`${explorerBase}/address/${bounty.hunter}`}
+                            href={bounty.proofUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary hover:underline inline-flex items-center gap-1"
+                            className="text-sm text-primary hover:underline inline-flex items-center gap-1 group"
                           >
-                            {shortAddr(bounty.hunter)}
+                            {bounty.proofUrl.length > 60
+                              ? bounty.proofUrl.slice(0, 60) + "…"
+                              : bounty.proofUrl}
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
-                        {submittedDate && (
-                          <p className="text-sm text-muted-foreground">
-                            Submitted {formatDistance(submittedDate, new Date(), { addSuffix: true })}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant="outline">{statusMeta.label}</Badge>
-                    </div>
+                      )}
 
-                    {bounty.proofUrl && (
-                      <div>
-                        <span className="text-sm font-medium">Proof: </span>
-                        <a
-                          href={bounty.proofUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                        >
-                          {bounty.proofUrl.length > 60
-                            ? bounty.proofUrl.slice(0, 60) + '…'
-                            : bounty.proofUrl}
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    )}
-
-                    {bounty.submissionNotes && (
-                      <div>
-                        <span className="text-sm font-medium">Notes: </span>
-                        <span className="text-sm text-muted-foreground">{bounty.submissionNotes}</span>
-                      </div>
-                    )}
-                  </Card>
-                )}
+                      {bounty.submissionNotes && (
+                        <div>
+                          <span className="text-sm font-medium">Notes: </span>
+                          <span className="text-sm text-muted-foreground">
+                            {bounty.submissionNotes}
+                          </span>
+                        </div>
+                      )}
+                    </Card>
+                  )}
               </TabsContent>
 
               {/* Details tab */}
@@ -264,18 +340,18 @@ export default function BountyDetail() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Created</span>
-                    <span>{format(createdDate, 'MMM dd, yyyy HH:mm')}</span>
+                    <span>{format(createdDate, "MMM dd, yyyy HH:mm")}</span>
                   </div>
                   {submittedDate && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Submitted</span>
-                      <span>{format(submittedDate, 'MMM dd, yyyy HH:mm')}</span>
+                      <span>{format(submittedDate, "MMM dd, yyyy HH:mm")}</span>
                     </div>
                   )}
                   {completedDate && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Completed</span>
-                      <span>{format(completedDate, 'MMM dd, yyyy HH:mm')}</span>
+                      <span>{format(completedDate, "MMM dd, yyyy HH:mm")}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -287,7 +363,7 @@ export default function BountyDetail() {
                         href={`${explorerBase}/address/${bounty.paymentToken}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline inline-flex items-center gap-1"
+                        className="text-primary hover:underline inline-flex items-center gap-1 group"
                       >
                         {bounty.token.symbol} ({shortAddr(bounty.paymentToken)})
                         <ExternalLink className="w-3 h-3" />
@@ -299,10 +375,17 @@ export default function BountyDetail() {
             </Tabs>
           </div>
 
-          {/* ── Sidebar ──────────────────────────────────────── */}
+          {/*Sidebar*/}
           <div className="lg:col-span-1">
-            <Card className="p-6 sticky top-20 space-y-6">
-
+            <Card
+              className="p-6 sticky top-20 space-y-6 card-shimmer"
+              style={
+                {
+                  "--shimmer-duration": "4s",
+                  "--shimmer-start": "45deg",
+                } as React.CSSProperties
+              }
+            >
               {/* Reward */}
               <div>
                 <div className="text-sm text-muted-foreground mb-1">Reward</div>
@@ -310,7 +393,9 @@ export default function BountyDetail() {
                   <DollarSign className="w-6 h-6" />
                   {formattedReward}
                 </div>
-                <div className="text-sm text-muted-foreground">{bounty.token.symbol}</div>
+                <div className="text-sm text-muted-foreground">
+                  {bounty.token.symbol}
+                </div>
               </div>
 
               {/* Timeline */}
@@ -322,18 +407,34 @@ export default function BountyDetail() {
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Posted</span>
-                    <span>{formatDistance(createdDate, new Date(), { addSuffix: true })}</span>
+                    <span>
+                      {formatDistance(createdDate, new Date(), {
+                        addSuffix: true,
+                      })}
+                    </span>
                   </div>
                   {submittedDate && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground pr-1">Submitted</span>
-                      <span>{formatDistance(submittedDate, new Date(), { addSuffix: true })}</span>
+                      <span className="text-muted-foreground pr-1">
+                        Submitted
+                      </span>
+                      <span>
+                        {formatDistance(submittedDate, new Date(), {
+                          addSuffix: true,
+                        })}
+                      </span>
                     </div>
                   )}
                   {completedDate && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground mr-1">Completed</span>
-                      <span>{formatDistance(completedDate, new Date(), { addSuffix: true })}</span>
+                      <span className="text-muted-foreground mr-1">
+                        Completed
+                      </span>
+                      <span>
+                        {formatDistance(completedDate, new Date(), {
+                          addSuffix: true,
+                        })}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -343,18 +444,26 @@ export default function BountyDetail() {
               <div className="space-y-2 pt-4 border-t border-border">
                 {!connected ? (
                   <div className="text-center py-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Connect wallet to interact</p>
+                    <p className="text-sm text-muted-foreground">
+                      Connect wallet to interact
+                    </p>
                   </div>
                 ) : (
                   <>
                     {canSubmit && (
-                      <Button onClick={() => setShowSubmitModal(true)} className="w-full">
+                      <Button
+                        onClick={() => setShowSubmitModal(true)}
+                        className="w-full hover:scale-[1.02] transition-transform duration-150"
+                      >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Submit Work
                       </Button>
                     )}
                     {canApprove && (
-                      <Button onClick={() => setShowApproveModal(true)} className="w-full">
+                      <Button
+                        onClick={() => setShowApproveModal(true)}
+                        className="w-full hover:scale-[1.02] transition-transform duration-150"
+                      >
                         Approve &amp; Pay Hunter
                       </Button>
                     )}
@@ -369,7 +478,9 @@ export default function BountyDetail() {
                     )}
                     {!canSubmit && !canApprove && !canCancel && (
                       <div className="text-center py-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">No actions available</p>
+                        <p className="text-sm text-muted-foreground">
+                          No actions available
+                        </p>
                       </div>
                     )}
                   </>
@@ -377,7 +488,6 @@ export default function BountyDetail() {
               </div>
             </Card>
           </div>
-
         </div>
       </main>
 
@@ -404,5 +514,5 @@ export default function BountyDetail() {
 
       <Footer />
     </div>
-  )
+  );
 }

@@ -29,7 +29,7 @@ export function ApproveBountyReview({
   onOpenChange,
   bounty,
 }: ApproveBountyReviewProps) {
-  const { approveBounty } = useBounty();
+  const { approveBounty, clearError } = useBounty();
   const [step, setStep] = useState<ApproveStep>("idle");
 
   const hasSubmission =
@@ -53,6 +53,7 @@ export function ApproveBountyReview({
       }
     } catch (err) {
       setStep("idle");
+      clearError()
       toast.error(
         err instanceof Error ? err.message : "Approval failed unexpectedly.",
       );

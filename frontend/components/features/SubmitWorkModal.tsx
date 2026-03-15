@@ -27,7 +27,7 @@ interface SubmitWorkModalProps {
 type SubmitStep = 'idle' | 'waiting-wallet' | 'mining'
 
 export function SubmitWorkModal({ open, onOpenChange, bounty }: SubmitWorkModalProps) {
-  const { submitWork } = useBounty()
+  const { submitWork, clearError } = useBounty()
   const [step, setStep] = useState<SubmitStep>('idle')
   const [formData, setFormData] = useState({
     proofUrl: '',
@@ -74,6 +74,7 @@ export function SubmitWorkModal({ open, onOpenChange, bounty }: SubmitWorkModalP
       }
     } catch (err) {
       setStep('idle')
+      clearError()
       toast.error(err instanceof Error ? err.message : 'Submission failed unexpectedly.')
     }
   }

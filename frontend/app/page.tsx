@@ -71,22 +71,27 @@ export default function Home() {
     {
       value: platformStats ? `${formatStatValue(totalValueDOT)} PAS` : "—",
       label: "Total Value (PAS)",
+      live: false,
     },
     {
       value: platformStats ? `$${formatStatValue(totalValueStable)}` : "—",
       label: "Total Value (Stable)",
+      live: false,
     },
     {
       value: platformStats ? platformStats.activeBounties.toString() : "—",
       label: "Active Bounties",
+      live: true,
     },
     {
       value: platformStats ? platformStats.totalBounties.toString() : "—",
       label: "Total Bounties",
+      live: false,
     },
     {
       value: platformStats ? platformStats.completedBounties.toString() : "—",
       label: "Completed",
+      live: false,
     },
   ];
 
@@ -109,7 +114,10 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link href="/create">
-                  <Button size="lg" className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto hover:scale-[1.02] transition-transform duration-150"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Bounty
                   </Button>
@@ -129,14 +137,28 @@ export default function Home() {
               {stats.map((s) => (
                 <div
                   key={s.label}
-                  className="bg-card rounded-lg border border-border p-4"
+                  className="bg-card rounded-lg border border-border p-4 card-shimmer"
+                  style={
+                    {
+                      "--shimmer-duration": `${3 + stats.indexOf(s) * 0.7}s`,
+                      "--shimmer-start": `${stats.indexOf(s) * 72}deg`,
+                    } as React.CSSProperties
+                  }
                 >
-                  <div className="text-2xl font-bold text-primary">
-                    {platformStats === null ? (
-                      <span className="inline-block w-16 h-6 bg-muted animate-pulse rounded" />
-                    ) : (
-                      s.value
+                  <div className="flex items-center gap-2 mb-1">
+                    {s.live && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                      </span>
                     )}
+                    <div className="text-2xl font-bold text-primary">
+                      {platformStats === null ? (
+                        <span className="inline-block w-16 h-6 bg-muted animate-pulse rounded" />
+                      ) : (
+                        s.value
+                      )}
+                    </div>
                   </div>
                   <div className="text-xs text-muted-foreground">{s.label}</div>
                 </div>
@@ -211,34 +233,28 @@ export default function Home() {
                 </Button>
 
                 {(() => {
-                  const pages: (number | "ellipsis")[] = [];
+                  const pages: (number | "ellipsis-start" | "ellipsis-end")[] =
+                    [];
 
                   if (totalPages <= 5) {
-                    // Show all if few pages
                     for (let i = 1; i <= totalPages; i++) pages.push(i);
                   } else {
                     pages.push(1);
-                    if (page > 3) pages.push("ellipsis");
 
-                    // Pages around current
-                    for (
-                      let i = Math.max(2, page - 1);
-                      i <= Math.min(totalPages - 1, page + 1);
-                      i++
-                    ) {
-                      pages.push(i);
-                    }
+                    if (page > 3) pages.push("ellipsis-start");
 
-                    if (page < totalPages - 2) pages.push("ellipsis");
+                    const start = Math.max(2, page - 1);
+                    const end = Math.min(totalPages - 1, page + 1);
+                    for (let i = start; i <= end; i++) pages.push(i);
+
+                    if (page < totalPages - 2) pages.push("ellipsis-end");
+
                     pages.push(totalPages);
                   }
 
-                  return pages.map((p, i) =>
-                    p === "ellipsis" ? (
-                      <span
-                        key={`ellipsis-${i}`}
-                        className="px-1 text-muted-foreground"
-                      >
+                  return pages.map((p) =>
+                    typeof p === "string" ? (
+                      <span key={p} className="px-1 text-muted-foreground">
                         …
                       </span>
                     ) : (

@@ -35,6 +35,7 @@ import { ethers } from "ethers";
 import { CATEGORY_LABELS, Category } from "@/lib/types";
 import MicroBountyABI from "@/lib/abis/MicroBounty.json";
 import contractAddresses from "@/lib/abis/contract-addresses.json";
+import { LiveBadge } from "@/components/ui/LiveBadge";
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 const CONTRACT_ADDRESS = contractAddresses.MicroBounty;
@@ -426,6 +427,7 @@ export default function AnalyticsPage() {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
           <MetricCard
+          shimmerIndex={0}
             label="Total Bounties"
             value={
               statsLoading
@@ -443,6 +445,7 @@ export default function AnalyticsPage() {
             }
           />
           <MetricCard
+          shimmerIndex={1}
             label="Completed Bounties"
             value={
               statsLoading
@@ -462,6 +465,7 @@ export default function AnalyticsPage() {
             }
           />
           <MetricCard
+          shimmerIndex={2}
             label="Value Locked (PAS)"
             value={
               statsLoading
@@ -483,6 +487,7 @@ export default function AnalyticsPage() {
             }
           />
           <MetricCard
+          shimmerIndex={3}
             label="Value Locked (Stable)"
             value={
               statsLoading
@@ -510,9 +515,7 @@ export default function AnalyticsPage() {
           <Card className="p-6 lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-semibold">Bounty Status Breakdown</h2>
-              <Badge variant="outline" className="text-xs">
-                Live
-              </Badge>
+              <LiveBadge />
             </div>
             {statsLoading ? (
               <ChartLoader />
@@ -543,9 +546,7 @@ export default function AnalyticsPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-semibold">Bounties by Category</h2>
-              <Badge variant="outline" className="text-xs">
-                Live
-              </Badge>
+              <LiveBadge />
             </div>
             {statsLoading ? (
               <ChartLoader />
@@ -826,15 +827,27 @@ function MetricCard({
   icon,
   iconBg,
   sub,
+  shimmerIndex = 0,
 }: {
   label: string;
   value: string | null;
   icon: React.ReactNode;
   iconBg: string;
   sub: string | null;
+  shimmerIndex?: number;
 }) {
+  const shimmer = SHIMMER_CONFIGS[shimmerIndex % SHIMMER_CONFIGS.length];
+
   return (
-    <Card className="p-6">
+    <Card
+      className="p-6 card-shimmer"
+      style={
+        {
+          "--shimmer-duration": shimmer.duration,
+          "--shimmer-start": shimmer.startAngle,
+        } as React.CSSProperties
+      }
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground mb-1">{label}</p>
@@ -899,6 +912,14 @@ const RANK_CONFIG = [
     label: "text-indigo-600 dark:text-indigo-400",
     border: "border-indigo-300/40 dark:border-indigo-500/30",
   },
+];
+
+const SHIMMER_CONFIGS = [
+  { duration: "3s",   startAngle: "0deg"   },
+  { duration: "4.5s", startAngle: "72deg"  },
+  { duration: "3.8s", startAngle: "144deg" },
+  { duration: "5.2s", startAngle: "216deg" },
+  { duration: "4.1s", startAngle: "288deg" },
 ];
 
 const ROLE_COLORS: Record<LeaderEntry["role"], string> = {

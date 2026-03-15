@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useWallet } from "@/context/WalletContext";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Zap, Menu, ChevronDown, Wallet } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -71,9 +72,10 @@ function WalletDropdown({
       {open && (
         <div
           className={`
-            ${mobile ? "relative mt-1" : "absolute right-0 top-full mt-1"}
-            w-56 rounded-lg border border-border bg-popover shadow-lg z-50 p-3 space-y-3
-          `}
+    ${mobile ? "relative mt-1 w-full" : "absolute right-0 top-full mt-1 w-56"}
+    rounded-lg border border-border bg-popover shadow-lg z-50 p-3 space-y-3
+    animate-in fade-in slide-in-from-top-1 duration-150
+  `}
         >
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -131,6 +133,8 @@ export function Navbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const pathname = usePathname();
+
   const handleDisconnect = () => {
     disconnect();
     setMobileMenuOpen(false);
@@ -152,15 +156,26 @@ export function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors
+          ${
+            isActive
+              ? "text-foreground bg-accent"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          }`}
+                >
+                  {link.label}
+                  {isActive && (
+                    <span className="block h-px bg-primary rounded-full mt-0.5 -mb-1" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Desktop wallet */}
@@ -200,17 +215,25 @@ export function Navbar() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-4 space-y-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div className="md:hidden border-t border-border py-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors border-l-2
+        ${
+          isActive
+            ? "text-foreground bg-accent border-l-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent border-l-transparent"
+        }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
 
             <div className="pt-2 border-t border-border">
               {connected && address ? (
@@ -231,7 +254,7 @@ export function Navbar() {
                   disabled={isConnecting}
                   className="w-full"
                 >
-                  {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                  {isConnecting ? "Connecting..." : "Connect Wallet"}
                 </Button>
               )}
             </div>
