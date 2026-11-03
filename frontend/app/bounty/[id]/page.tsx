@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -98,6 +98,30 @@ export default function BountyDetail() {
   useEffect(() => {
     if (bountyId) fetchBountyById(bountyId);
   }, [bountyId, fetchBountyById]);
+  
+// Wrap background re-fetch so polling doesn't trigger the main page loading spinner
+  const fetchBountySilently = useCallback(async () => {
+    if (!bountyId) return;
+    try {
+      // Re-fetches smart contract data without setting isLoading = true
+      await fetchBountyById(bountyId);
+    } catch (err) {
+      console.error("Failed background auto-sync:", err);
+    }
+  }, [bountyId, fetchBountyById]);
+
+  // Auto-refresh smart contract state every 10 seconds
+  useEffect(() => {
+    if (!bountyId) return;
+
+    // Trigger silent fetch every 10,000 milliseconds (10s)
+    const intervalId = setInterval(() => {
+      fetchBountySilently();
+    }, 10000);
+
+    // Clean up timer on unmount to prevent memory leaks
+    return () => clearInterval(intervalId);
+  }, [bountyId, fetchBountySilently]);
 
   // Loading
   if (isLoading) {
